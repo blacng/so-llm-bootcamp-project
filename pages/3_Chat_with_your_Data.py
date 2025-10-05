@@ -9,7 +9,7 @@ import streamlit as st
 from typing import List, Dict, Any
 
 from ui_components import ChatbotUI, APIKeyUI
-from langchain_helpers import RAGHelper, ValidationHelper
+from langchain_helpers import RAGHelper, ValidationHelper, PIIHelper
 
 
 def setup_page() -> None:
@@ -155,16 +155,32 @@ class CustomDataChatbot:
         self.openai_model = "gpt-4o-mini"
 
     def setup_graph(self, uploaded_files: List[Any]) -> Any:
-        """Setup RAG processing graph from uploaded documents.
-        
+        """Setup RAG processing graph from uploaded documents with PII handling.
+
         Args:
             uploaded_files: List of Streamlit uploaded file objects
-            
+
         Returns:
             Configured RAG workflow for document Q&A
         """
         api_key = st.session_state.get("rag_openai_key", "")
-        return RAGHelper.setup_rag_system(uploaded_files, api_key)
+
+        # Get PII settings from session state
+        anonymize_pii = st.session_state.get("rag_anonymize_pii", False)
+        pii_method = st.session_state.get("rag_pii_method", "replace")
+
+        # Setup RAG system with PII settings
+        rag_app, pii_entities = RAGHelper.setup_rag_system(
+            uploaded_files,
+            api_key,
+            anonymize_pii=anonymize_pii,
+            pii_method=pii_method
+        )
+
+        # Store detected PII entities for reporting
+        st.session_state["rag_pii_entities"] = pii_entities
+
+        return rag_app
     
     def display_messages(self) -> None:
         """Display document-aware chat messages.
@@ -183,7 +199,7 @@ class CustomDataChatbot:
 
     def main(self) -> None:
         """Main RAG chatbot workflow.
-        
+
         Manages document upload, processing, vector store creation,
         and intelligent question-answering over document content.
         """
@@ -194,6 +210,74 @@ class CustomDataChatbot:
             st.session_state.rag_app = None
         if "rag_messages" not in st.session_state:
             st.session_state.rag_messages = []
+        if "rag_anonymize_pii" not in st.session_state:
+            st.session_state.rag_anonymize_pii = False
+        if "rag_pii_method" not in st.session_state:
+            st.session_state.rag_pii_method = "replace"
+        if "rag_pii_entities" not in st.session_state:
+            st.session_state.rag_pii_entities = []
+        if "rag_detect_query_pii" not in st.session_state:
+            st.session_state.rag_detect_query_pii = True
+
+        # PII Privacy Settings (in sidebar or expander)
+        with st.expander("🔒 Privacy & PII Settings", expanded=False):
+            st.markdown("**Document PII Protection**")
+
+            # Check if PII detection is available
+            pii_available = PIIHelper.is_available()
+
+            if not pii_available:
+                st.warning(
+                    "⚠️ PII detection not available. Install with:\n\n"
+                    "`pip install presidio-analyzer presidio-anonymizer && "
+                    "python -m spacy download en_core_web_lg`"
+                )
+            else:
+                st.success("✅ PII detection is available")
+
+            # PII anonymization toggle
+            anonymize_pii = st.checkbox(
+                "Enable PII Detection & Anonymization",
+                value=st.session_state.rag_anonymize_pii,
+                help="Automatically detect and anonymize sensitive information in uploaded documents",
+                disabled=not pii_available
+            )
+            st.session_state.rag_anonymize_pii = anonymize_pii
+
+            if anonymize_pii:
+                # Anonymization method selection
+                method_map = {
+                    "Replace with placeholders (e.g., <PERSON>, <EMAIL>)": "replace",
+                    "Mask with asterisks (e.g., ****)": "mask",
+                    "Hash values (SHA256)": "hash",
+                    "Redact completely": "redact"
+                }
+
+                selected_method_label = st.selectbox(
+                    "Anonymization Method",
+                    options=list(method_map.keys()),
+                    index=0,
+                    help="Choose how to handle detected PII"
+                )
+                st.session_state.rag_pii_method = method_map[selected_method_label]
+
+                st.info(
+                    "💡 **How it works**: PII will be detected and anonymized "
+                    "**before** documents are processed and stored in the vector database. "
+                    "This ensures sensitive information never enters the embeddings."
+                )
+
+            st.markdown("---")
+            st.markdown("**Query PII Detection**")
+
+            # Query PII detection toggle
+            detect_query_pii = st.checkbox(
+                "Detect PII in user queries",
+                value=st.session_state.rag_detect_query_pii,
+                help="Warn when queries contain sensitive information",
+                disabled=not pii_available
+            )
+            st.session_state.rag_detect_query_pii = detect_query_pii
 
         # Centered document upload interface
         col1, col2, col3 = st.columns([2, 1.5, 2])
@@ -203,21 +287,49 @@ class CustomDataChatbot:
                 type=["pdf"],
                 accept_multiple_files=True
             )
-            
+
             # Document processing handled automatically upon upload
-                
+
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Process documents when uploaded or changed
         if uploaded_files:
             current_files = {f.name for f in uploaded_files}
             previous_files = {f.name for f in st.session_state.get("rag_uploaded_files", [])}
-            
+
             # Rebuild RAG system if files changed or system not initialized
             if current_files != previous_files or st.session_state.rag_app is None:
                 st.session_state.rag_uploaded_files = uploaded_files
-                with st.spinner("📚 Processing documents..."):
+
+                processing_message = "📚 Processing documents"
+                if st.session_state.rag_anonymize_pii:
+                    processing_message += " and detecting PII"
+                processing_message += "..."
+
+                with st.spinner(processing_message):
                     st.session_state.rag_app = self.setup_graph(uploaded_files)
+
+                # Display PII detection report if PII was detected
+                if st.session_state.rag_anonymize_pii and st.session_state.rag_pii_entities:
+                    pii_entities = st.session_state.rag_pii_entities
+
+                    with st.expander(f"🔍 PII Detection Report ({len(pii_entities)} entities found)", expanded=True):
+                        # Generate statistics
+                        stats = PIIHelper.get_pii_statistics(pii_entities)
+
+                        st.markdown("**Summary by Type:**")
+                        for entity_type, count in sorted(stats.items(), key=lambda x: x[1], reverse=True):
+                            st.markdown(f"- **{entity_type}**: {count}")
+
+                        st.markdown("---")
+                        st.markdown(f"**Method**: {st.session_state.rag_pii_method}")
+                        st.success(
+                            f"✅ All PII has been anonymized before processing. "
+                            f"Your documents are now privacy-protected in the vector store."
+                        )
+                elif st.session_state.rag_anonymize_pii and not st.session_state.rag_pii_entities:
+                    st.info("ℹ️ No PII detected in uploaded documents.")
+
         else:
             # Show welcome message when no documents are uploaded
             if not st.session_state.rag_messages:
@@ -250,10 +362,37 @@ class CustomDataChatbot:
                         
                         # Extract generated response with fallback
                         answer = (
-                            result.get("generation", "").strip() or 
+                            result.get("generation", "").strip() or
                             "I couldn't find enough information in the documents to answer that."
                         )
-                        
+
+                        # SAFETY LAYER: Detect PII leakage in response
+                        # This catches any PII that might have slipped through if documents
+                        # were processed without anonymization enabled
+                        if st.session_state.rag_anonymize_pii and PIIHelper.is_available():
+                            response_pii = PIIHelper.detect_pii(answer, score_threshold=0.7)
+
+                            if response_pii:
+                                # PII detected in response - anonymize it as safety measure
+                                pii_types = list(set([e['type'] for e in response_pii]))
+
+                                # Anonymize the response
+                                anonymized_answer, _ = PIIHelper.anonymize_text(
+                                    answer,
+                                    method=st.session_state.rag_pii_method,
+                                    score_threshold=0.7
+                                )
+
+                                # Add warning message
+                                warning_msg = (
+                                    f"⚠️ **Privacy Alert**: Response contained {len(response_pii)} "
+                                    f"potentially sensitive item(s) ({', '.join(pii_types)}) which have been anonymized.\n\n"
+                                    f"**Note**: This suggests the document may have been uploaded without PII protection enabled. "
+                                    f"For better privacy, please re-upload with PII anonymization enabled.\n\n"
+                                    f"**Anonymized Response**:\n{anonymized_answer}"
+                                )
+                                answer = warning_msg
+
                         # Add assistant response
                         st.session_state.rag_messages.append({"role": "assistant", "content": answer})
                 
@@ -267,6 +406,19 @@ class CustomDataChatbot:
 
         # Document query input interface
         if prompt := st.chat_input("Ask about your documents..."):
+            # Detect PII in user query if enabled
+            if st.session_state.rag_detect_query_pii and PIIHelper.is_available():
+                query_pii_entities = PIIHelper.detect_pii(prompt, score_threshold=0.6)
+
+                if query_pii_entities:
+                    # Show warning about PII in query
+                    pii_types = list(set([e['type'] for e in query_pii_entities]))
+                    st.warning(
+                        f"⚠️ **PII Detected in Query**: Your question contains {len(query_pii_entities)} "
+                        f"potentially sensitive item(s): {', '.join(pii_types)}\n\n"
+                        f"Consider rephrasing to avoid including personal information."
+                    )
+
             # Add user query to conversation history
             st.session_state.rag_messages.append({"role": "user", "content": prompt})
             st.rerun()
