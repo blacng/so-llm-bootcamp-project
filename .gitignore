@@ -38,8 +38,10 @@ Temporary Items
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
+__pycache__/*.pyc
 *.py[cod]
 *$py.class
+*.pyc
 
 # C extensions
 *.so
@@ -246,3 +248,5 @@ tmp/
 *.seed
 *.dump
 *.DS_Store
+__pycache__/langchain_helpers.cpython-311.pyc
+.gitignore
