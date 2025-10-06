@@ -155,7 +155,7 @@ class CustomDataChatbot:
         self.openai_model = "gpt-4o-mini"
 
     def setup_graph(self, uploaded_files: List[Any]) -> Any:
-        """Setup RAG processing graph from uploaded documents with PII handling.
+        """Setup RAG processing graph from uploaded documents with PII handling and caching.
 
         Args:
             uploaded_files: List of Streamlit uploaded file objects
@@ -168,13 +168,15 @@ class CustomDataChatbot:
         # Get PII settings from session state
         anonymize_pii = st.session_state.get("rag_anonymize_pii", False)
         pii_method = st.session_state.get("rag_pii_method", "replace")
+        use_cache = st.session_state.get("rag_use_cache", True)
 
-        # Setup RAG system with PII settings
+        # Setup RAG system with PII settings and caching
         rag_app, pii_entities = RAGHelper.setup_rag_system(
             uploaded_files,
             api_key,
             anonymize_pii=anonymize_pii,
-            pii_method=pii_method
+            pii_method=pii_method,
+            use_cache=use_cache
         )
 
         # Store detected PII entities for reporting
@@ -218,9 +220,11 @@ class CustomDataChatbot:
             st.session_state.rag_pii_entities = []
         if "rag_detect_query_pii" not in st.session_state:
             st.session_state.rag_detect_query_pii = True
+        if "rag_use_cache" not in st.session_state:
+            st.session_state.rag_use_cache = True
 
-        # PII Privacy Settings (in sidebar or expander)
-        with st.expander("🔒 Privacy & PII Settings", expanded=False):
+        # PII Privacy & Caching Settings
+        with st.expander("⚙️ Privacy & Performance Settings", expanded=False):
             st.markdown("**Document PII Protection**")
 
             # Check if PII detection is available
@@ -278,6 +282,42 @@ class CustomDataChatbot:
                 disabled=not pii_available
             )
             st.session_state.rag_detect_query_pii = detect_query_pii
+
+            st.markdown("---")
+            st.markdown("**Performance & Caching**")
+
+            # Caching toggle
+            use_cache = st.checkbox(
+                "Enable smart caching",
+                value=st.session_state.rag_use_cache,
+                help="Cache processed documents for instant reload on page refresh (recommended)"
+            )
+            st.session_state.rag_use_cache = use_cache
+
+            if use_cache:
+                # Show cache statistics
+                from langchain_helpers import RAGHelper
+                cache_stats = RAGHelper.get_cache_statistics()
+
+                if cache_stats["total_caches"] > 0:
+                    st.info(
+                        f"📊 **Cache Status**: {cache_stats['total_caches']} cached document set(s) "
+                        f"({cache_stats['total_size_mb']:.1f} MB total)\n\n"
+                        f"Caches auto-expire after 7 days."
+                    )
+
+                    # Add clear cache button
+                    if st.button("🗑️ Clear All Caches"):
+                        import shutil
+                        if RAGHelper.CACHE_DIR.exists():
+                            shutil.rmtree(RAGHelper.CACHE_DIR)
+                            RAGHelper.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                            st.success("✅ All caches cleared!")
+                            st.rerun()
+                else:
+                    st.info("💡 No caches yet. Upload documents to create your first cache!")
+            else:
+                st.warning("⚠️ Caching disabled. Documents will be reprocessed on every page refresh.")
 
         # Centered document upload interface
         col1, col2, col3 = st.columns([2, 1.5, 2])
@@ -404,6 +444,17 @@ class CustomDataChatbot:
                 st.error(f"Error: {str(e)}")
                 st.rerun()
 
+        # Show query PII warning if it was detected in last query
+        if st.session_state.get("rag_last_query_pii"):
+            pii_info = st.session_state["rag_last_query_pii"]
+            st.warning(
+                f"⚠️ **PII Detected in Query**: Your question contains {pii_info['count']} "
+                f"potentially sensitive item(s): {', '.join(pii_info['types'])}\n\n"
+                f"Consider rephrasing to avoid including personal information."
+            )
+            # Clear the warning after showing
+            st.session_state["rag_last_query_pii"] = None
+
         # Document query input interface
         if prompt := st.chat_input("Ask about your documents..."):
             # Detect PII in user query if enabled
@@ -411,13 +462,16 @@ class CustomDataChatbot:
                 query_pii_entities = PIIHelper.detect_pii(prompt, score_threshold=0.6)
 
                 if query_pii_entities:
-                    # Show warning about PII in query
+                    # Store PII detection info to show after rerun
                     pii_types = list(set([e['type'] for e in query_pii_entities]))
-                    st.warning(
-                        f"⚠️ **PII Detected in Query**: Your question contains {len(query_pii_entities)} "
-                        f"potentially sensitive item(s): {', '.join(pii_types)}\n\n"
-                        f"Consider rephrasing to avoid including personal information."
-                    )
+                    st.session_state["rag_last_query_pii"] = {
+                        "count": len(query_pii_entities),
+                        "types": pii_types
+                    }
+                else:
+                    st.session_state["rag_last_query_pii"] = None
+            else:
+                st.session_state["rag_last_query_pii"] = None
 
             # Add user query to conversation history
             st.session_state.rag_messages.append({"role": "user", "content": prompt})

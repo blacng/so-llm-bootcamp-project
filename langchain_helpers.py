@@ -11,6 +11,11 @@ Provides helper classes for different types of chatbot functionality:
 """
 
 import os
+import hashlib
+import json
+import shutil
+from pathlib import Path
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, TypedDict, Literal, Tuple, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -203,18 +208,252 @@ class AgentChatbotHelper:
 
 class RAGHelper:
     """Helper class for RAG (Retrieval-Augmented Generation) functionality.
-    
+
     Provides document processing, vector storage, and intelligent retrieval
     capabilities for question-answering over user documents.
     """
-    
+
     # Type definition for RAG workflow state management
     class RAGState(TypedDict):
         question: str
         mode: Literal["summary", "fact"]
         documents: List[Document]
         generation: str
-    
+
+    # Cache configuration
+    CACHE_DIR = Path("tmp/vectorstores")
+    MAX_CACHE_AGE_DAYS = 7
+    MAX_CACHE_SIZE_MB = 500
+
+    @staticmethod
+    def _generate_cache_key(files, anonymize_pii: bool, pii_method: str) -> str:
+        """Generate unique cache key based on files and PII settings.
+
+        Args:
+            files: List of uploaded files
+            anonymize_pii: Whether PII anonymization is enabled
+            pii_method: PII anonymization method used
+
+        Returns:
+            MD5 hash string as cache key
+        """
+        hasher = hashlib.md5()
+
+        # Hash file information (name + size for quick check)
+        # Note: Not hashing full content for performance
+        file_info = []
+        for file in sorted(files, key=lambda f: f.name):
+            file_info.append((file.name, file.size))
+
+        hasher.update(str(file_info).encode())
+
+        # Hash PII settings
+        settings_str = f"{anonymize_pii}_{pii_method}"
+        hasher.update(settings_str.encode())
+
+        return hasher.hexdigest()[:16]
+
+    @staticmethod
+    def _get_cache_path(cache_key: str) -> Path:
+        """Get cache directory path for a given cache key.
+
+        Args:
+            cache_key: Unique cache identifier
+
+        Returns:
+            Path object for the cache directory
+        """
+        cache_path = RAGHelper.CACHE_DIR / cache_key
+        cache_path.mkdir(parents=True, exist_ok=True)
+        return cache_path
+
+    @staticmethod
+    def _save_to_cache(
+        vector_store: FAISS,
+        pii_entities: List[Dict],
+        cache_key: str,
+        files,
+        settings: Dict
+    ):
+        """Save vector store and metadata to cache.
+
+        Args:
+            vector_store: FAISS vector store to cache
+            pii_entities: List of detected PII entities
+            cache_key: Unique cache identifier
+            files: List of uploaded files
+            settings: PII settings used
+        """
+        cache_path = RAGHelper._get_cache_path(cache_key)
+
+        try:
+            # Save FAISS vector store
+            vector_store.save_local(str(cache_path))
+
+            # Save PII entities
+            pii_file = cache_path / "pii_entities.json"
+            with open(pii_file, 'w') as f:
+                json.dump(pii_entities, f, indent=2)
+
+            # Save metadata
+            metadata = {
+                "cache_key": cache_key,
+                "created_at": datetime.now().isoformat(),
+                "files": [{"name": f.name, "size": f.size} for f in files],
+                "file_count": len(files),
+                "settings": settings,
+                "pii_entity_count": len(pii_entities),
+                "vector_count": vector_store.index.ntotal,
+                "dimension": vector_store.index.d
+            }
+
+            metadata_file = cache_path / "metadata.json"
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
+
+            # Set restrictive permissions (owner only)
+            try:
+                for item in cache_path.rglob('*'):
+                    if item.is_file():
+                        os.chmod(item, 0o600)
+            except Exception:
+                pass  # Permission setting may fail on Windows
+
+            print(f"💾 Cached vector store: {cache_key}")
+
+        except Exception as e:
+            print(f"⚠️ Failed to save cache: {e}")
+
+    @staticmethod
+    def _load_from_cache(cache_key: str, api_key: str) -> Optional[Tuple[FAISS, List[Dict]]]:
+        """Load vector store and PII entities from cache.
+
+        Args:
+            cache_key: Unique cache identifier
+            api_key: OpenAI API key for embeddings
+
+        Returns:
+            Tuple of (vector_store, pii_entities) if cache exists, None otherwise
+        """
+        cache_path = RAGHelper._get_cache_path(cache_key)
+        index_file = cache_path / "index.faiss"
+
+        if not index_file.exists():
+            return None
+
+        try:
+            # Check cache age
+            metadata_file = cache_path / "metadata.json"
+            if metadata_file.exists():
+                with open(metadata_file) as f:
+                    metadata = json.load(f)
+                    created = datetime.fromisoformat(metadata['created_at'])
+                    age = datetime.now() - created
+
+                    if age > timedelta(days=RAGHelper.MAX_CACHE_AGE_DAYS):
+                        print(f"⚠️ Cache expired (age: {age.days} days)")
+                        return None
+
+            # Load vector store
+            embeddings_kwargs = {}
+            if api_key:
+                embeddings_kwargs["api_key"] = api_key
+
+            embeddings = OpenAIEmbeddings(**embeddings_kwargs)
+            vector_store = FAISS.load_local(
+                str(cache_path),
+                embeddings,
+                allow_dangerous_deserialization=True
+            )
+
+            # Load PII entities
+            pii_file = cache_path / "pii_entities.json"
+            pii_entities = []
+            if pii_file.exists():
+                with open(pii_file) as f:
+                    pii_entities = json.load(f)
+
+            print(f"✅ Loaded from cache: {cache_key}")
+            return vector_store, pii_entities
+
+        except Exception as e:
+            print(f"⚠️ Failed to load cache: {e}")
+            return None
+
+    @staticmethod
+    def cleanup_old_caches():
+        """Remove caches older than MAX_CACHE_AGE_DAYS."""
+        if not RAGHelper.CACHE_DIR.exists():
+            return
+
+        cutoff = datetime.now() - timedelta(days=RAGHelper.MAX_CACHE_AGE_DAYS)
+        removed_count = 0
+
+        for cache_dir in RAGHelper.CACHE_DIR.iterdir():
+            if not cache_dir.is_dir():
+                continue
+
+            metadata_file = cache_dir / "metadata.json"
+            if metadata_file.exists():
+                try:
+                    with open(metadata_file) as f:
+                        metadata = json.load(f)
+                        created = datetime.fromisoformat(metadata['created_at'])
+
+                        if created < cutoff:
+                            shutil.rmtree(cache_dir)
+                            removed_count += 1
+                            print(f"🗑️ Removed old cache: {cache_dir.name}")
+                except Exception as e:
+                    print(f"⚠️ Error cleaning cache {cache_dir.name}: {e}")
+
+        if removed_count > 0:
+            print(f"Cleaned up {removed_count} old cache(s)")
+
+    @staticmethod
+    def get_cache_statistics() -> Dict[str, Any]:
+        """Get statistics about cached vector stores.
+
+        Returns:
+            Dictionary with cache statistics
+        """
+        if not RAGHelper.CACHE_DIR.exists():
+            return {
+                "total_caches": 0,
+                "total_size_mb": 0,
+                "oldest_cache": None,
+                "newest_cache": None
+            }
+
+        caches = []
+        total_size = 0
+
+        for cache_dir in RAGHelper.CACHE_DIR.iterdir():
+            if not cache_dir.is_dir():
+                continue
+
+            # Calculate size
+            cache_size = sum(f.stat().st_size for f in cache_dir.rglob('*') if f.is_file())
+            total_size += cache_size
+
+            # Read metadata
+            metadata_file = cache_dir / "metadata.json"
+            if metadata_file.exists():
+                with open(metadata_file) as f:
+                    metadata = json.load(f)
+                    metadata['size_mb'] = cache_size / (1024 * 1024)
+                    caches.append(metadata)
+
+        caches.sort(key=lambda x: x['created_at'])
+
+        return {
+            "total_caches": len(caches),
+            "total_size_mb": total_size / (1024 * 1024),
+            "oldest_cache": caches[0] if caches else None,
+            "newest_cache": caches[-1] if caches else None,
+            "caches": caches
+        }
+
     @staticmethod
     def save_file(file, folder: str = "tmp") -> str:
         """Save uploaded file to local storage.
@@ -238,12 +477,14 @@ class RAGHelper:
         api_key: str = None,
         anonymize_pii: bool = False,
         pii_method: str = "replace",
-        pii_entities: Optional[List[str]] = None
+        pii_entities: Optional[List[str]] = None,
+        use_cache: bool = True
     ) -> Tuple[FAISS, List[Dict[str, Any]]]:
-        """Build FAISS vector store from uploaded PDF files with optional PII anonymization.
+        """Build FAISS vector store from uploaded PDF files with optional PII anonymization and caching.
 
         Processes PDF files, optionally anonymizes PII, splits them into chunks,
-        creates embeddings, and builds a searchable vector database.
+        creates embeddings, and builds a searchable vector database. Supports caching
+        for faster reloads.
 
         Args:
             files: List of uploaded PDF files
@@ -251,10 +492,21 @@ class RAGHelper:
             anonymize_pii: Whether to detect and anonymize PII (default: False)
             pii_method: Anonymization method - "replace", "mask", "hash", or "redact"
             pii_entities: List of specific PII types to anonymize (None = all types)
+            use_cache: Whether to use caching (default: True)
 
         Returns:
             Tuple of (FAISS vector store, list of all detected PII entities)
         """
+        # Generate cache key based on files and settings
+        if use_cache:
+            cache_key = RAGHelper._generate_cache_key(files, anonymize_pii, pii_method)
+
+            # Try to load from cache
+            cached_result = RAGHelper._load_from_cache(cache_key, api_key)
+            if cached_result is not None:
+                return cached_result
+
+        # Cache miss or caching disabled - build new vector store
         documents: List[Document] = []
         all_pii_entities: List[Dict[str, Any]] = []
 
@@ -299,6 +551,15 @@ class RAGHelper:
         # Create embeddings and build vector store
         embeddings = OpenAIEmbeddings(**embeddings_kwargs)
         vector_store = FAISS.from_documents(document_chunks, embeddings)
+
+        # Save to cache
+        if use_cache:
+            settings = {
+                "anonymize_pii": anonymize_pii,
+                "pii_method": pii_method,
+                "pii_entities": pii_entities
+            }
+            RAGHelper._save_to_cache(vector_store, all_pii_entities, cache_key, files, settings)
 
         return vector_store, all_pii_entities
     
@@ -415,12 +676,13 @@ class RAGHelper:
         api_key: str = None,
         anonymize_pii: bool = False,
         pii_method: str = "replace",
-        pii_entities: Optional[List[str]] = None
+        pii_entities: Optional[List[str]] = None,
+        use_cache: bool = True
     ) -> Tuple[Any, List[Dict[str, Any]]]:
-        """Setup complete RAG system from uploaded files with optional PII anonymization.
+        """Setup complete RAG system from uploaded files with optional PII anonymization and caching.
 
         Orchestrates the entire RAG pipeline: file processing, optional PII anonymization,
-        vectorization, retriever setup, and workflow creation.
+        vectorization, retriever setup, and workflow creation. Supports caching for faster reloads.
 
         Args:
             uploaded_files: List of PDF files to process
@@ -428,17 +690,22 @@ class RAGHelper:
             anonymize_pii: Whether to detect and anonymize PII (default: False)
             pii_method: Anonymization method - "replace", "mask", "hash", or "redact"
             pii_entities: List of specific PII types to anonymize (None = all types)
+            use_cache: Whether to use caching (default: True)
 
         Returns:
             Tuple of (RAG workflow ready for query processing, list of detected PII entities)
         """
-        # Build vector store with optional PII anonymization
+        # Clean up old caches on setup
+        RAGHelper.cleanup_old_caches()
+
+        # Build vector store with optional PII anonymization and caching
         vector_store, pii_entities_detected = RAGHelper.build_vectorstore(
             uploaded_files,
             api_key,
             anonymize_pii=anonymize_pii,
             pii_method=pii_method,
-            pii_entities=pii_entities
+            pii_entities=pii_entities,
+            use_cache=use_cache
         )
         retriever = vector_store.as_retriever()
 
