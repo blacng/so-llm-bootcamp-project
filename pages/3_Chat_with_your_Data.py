@@ -370,17 +370,13 @@ class CustomDataChatbot:
                 elif st.session_state.rag_anonymize_pii and not st.session_state.rag_pii_entities:
                     st.info("ℹ️ No PII detected in uploaded documents.")
 
-        else:
-            # Show welcome message when no documents are uploaded
-            if not st.session_state.rag_messages:
-                self.display_messages()
-            return
-            
         # Render conversation history with document context
         self.display_messages()
         
         # Process document-based query and generate contextual response
-        if (st.session_state.rag_messages and 
+        if (uploaded_files and
+            st.session_state.rag_app and
+            st.session_state.rag_messages and
             st.session_state.rag_messages[-1]["role"] == "user" and
             not st.session_state.get("rag_processing", False)):
             
@@ -456,6 +452,10 @@ class CustomDataChatbot:
             st.session_state["rag_last_query_pii"] = None
 
         # Document query input interface
+        if not uploaded_files:
+            st.info("📤 Please upload PDF documents above to start chatting")
+            return
+
         if prompt := st.chat_input("Ask about your documents..."):
             # Detect PII in user query if enabled
             if st.session_state.rag_detect_query_pii and PIIHelper.is_available():
