@@ -33,3 +33,6 @@ arxiv==2.2.0
 
 # Assignment 3: Multi-format document support
 python-docx>=0.8.11
+
+# Spacy
+spacy>=3.7.1
