@@ -101,3 +101,7 @@ The RAG system intelligently determines response strategy:
 - **Summary Mode**: Triggered by "summarize", "overview", "key points" - retrieves 8 documents
 - **Fact Mode**: Triggered by "when", "who", "where", "amount", "specific" - retrieves 3 documents
 - Both modes generate grounded responses using only retrieved context
+- Use uv for package management
+- Use docker and docker-compose to containerize this application
+- Use make for infrastructure management
+- Use ruff for linting and code formatting
