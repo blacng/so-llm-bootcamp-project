@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: llm-bootcamp-app
     ports:
-      - "8501:8501"
+      - "8502:8501"
     environment:
       # OpenAI API Key (configure via .env file)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}

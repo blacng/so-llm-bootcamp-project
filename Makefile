@@ -17,15 +17,15 @@ build: ## Build Docker images
 	@echo "$(BLUE)Building Docker images...$(NC)"
 	docker-compose build
 
-up: ## Start the application
+up: build ## Build and start the application
 	@echo "$(GREEN)Starting application...$(NC)"
 	docker-compose up -d
-	@echo "$(GREEN)Application is running at http://localhost:8501$(NC)"
+	@echo "$(GREEN)Application is running at http://localhost:8502$(NC)"
 
 up-mcp: ## Start application with MCP server
 	@echo "$(GREEN)Starting application with MCP server...$(NC)"
 	docker-compose --profile mcp up -d
-	@echo "$(GREEN)Application: http://localhost:8501$(NC)"
+	@echo "$(GREEN)Application: http://localhost:8502$(NC)"
 	@echo "$(GREEN)MCP Server: http://localhost:8000$(NC)"
 
 down: ## Stop the application
@@ -48,7 +48,7 @@ shell: ## Open shell in the app container
 
 health: ## Check application health
 	@echo "$(BLUE)Checking application health...$(NC)"
-	@curl -f http://localhost:8501/_stcore/health || echo "$(RED)Application is not healthy$(NC)"
+	@curl -f http://localhost:8502/_stcore/health || echo "$(RED)Application is not healthy$(NC)"
 
 clean: ## Remove containers, volumes, and images
 	@echo "$(RED)Cleaning up Docker resources...$(NC)"
@@ -68,7 +68,7 @@ rebuild: ## Rebuild and restart the application
 	docker-compose down
 	docker-compose build --no-cache
 	docker-compose up -d
-	@echo "$(GREEN)Application rebuilt and running at http://localhost:8501$(NC)"
+	@echo "$(GREEN)Application rebuilt and running at http://localhost:8502$(NC)"
 
 ps: ## Show running containers
 	docker-compose ps
