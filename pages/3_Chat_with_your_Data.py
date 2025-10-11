@@ -10,6 +10,7 @@ from typing import List, Dict, Any
 
 from ui_components import ChatbotUI, APIKeyUI
 from langchain_helpers import RAGHelper, ValidationHelper, PIIHelper
+from config import Config
 
 
 def setup_page() -> None:
@@ -106,32 +107,45 @@ def setup_page() -> None:
 
 def configure_api_key() -> bool:
     """Configure OpenAI API key for RAG functionality.
-    
+
     Handles API key collection and validation specifically
     for document processing and embedding generation.
-    
+    Prioritizes environment variables over user input for security.
+
     Returns:
         True if API key is configured and valid, False otherwise
     """
+    # Check session state
     api_key = st.session_state.get("rag_openai_key", "")
-    
+
     if not api_key:
+        # Try to get from environment variables first (secure)
+        env_api_key = Config.get_openai_key()
+
+        if env_api_key:
+            # Found in environment - use it directly
+            st.session_state["rag_openai_key"] = env_api_key
+            st.info("🔐 Using API key from secure configuration")
+            return True
+
+        # Handle post-connection state to prevent form re-display
+        if st.session_state.get("rag_key_connected", False):
+            st.session_state["rag_key_connected"] = False
+            return True
+
+        # No env key - show input form as fallback
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.markdown("### 🔑 Enter API Key")
-            
-            # Handle post-connection state to prevent form re-display
-            if st.session_state.get("rag_key_connected", False):
-                st.session_state["rag_key_connected"] = False
-                return True
-                
+            st.warning("⚠️ No API key found in environment. Please enter manually (not recommended for production).")
+
             api_key_input = st.text_input(
                 "OpenAI API Key",
                 type="password",
                 placeholder="sk-proj-...",
                 key="rag_api_key_input"
             )
-            
+
             if st.button("Connect", type="primary", use_container_width=True):
                 if ValidationHelper.validate_openai_key(api_key_input):
                     st.session_state["rag_openai_key"] = api_key_input
@@ -140,7 +154,7 @@ def configure_api_key() -> bool:
                 else:
                     st.error("❌ Invalid key format")
         return False
-    
+
     return True
 
 class CustomDataChatbot:

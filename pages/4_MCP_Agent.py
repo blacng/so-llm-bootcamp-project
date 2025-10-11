@@ -11,6 +11,7 @@ from typing import Dict, Any, List
 
 from ui_components import ChatbotUI, APIKeyUI
 from langchain_helpers import MCPHelper, ValidationHelper
+from config import Config
 
 def setup_page() -> None:
     """Set up the MCP agent page with enhanced styling.
@@ -110,57 +111,92 @@ def setup_page() -> None:
 
 def configure_mcp_settings() -> bool:
     """Configure OpenAI API key and MCP server URL.
-    
+
     Handles collection and validation of both the LLM API key
     and MCP server endpoint for agent functionality.
-    
+    Prioritizes environment variables over user input for security.
+
     Returns:
         True if both settings are configured and valid, False otherwise
     """
+    # Check session state
     api_key = st.session_state.get("mcp_openai_key", "")
     mcp_url = st.session_state.get("mcp_server_url", "")
-    
+
     if not api_key or not mcp_url:
+        # Try to get from environment variables first (secure)
+        env_api_key = Config.get_openai_key()
+        env_mcp_url = Config.get_mcp_server_url()
+
+        # If both found in environment, use them
+        if env_api_key and env_mcp_url:
+            st.session_state["mcp_openai_key"] = env_api_key
+            st.session_state["mcp_server_url"] = env_mcp_url
+            st.info("🔐 Using API key and MCP URL from secure configuration")
+            return True
+
+        # Handle post-connection state to prevent form re-display
+        if st.session_state.get("mcp_keys_connected", False):
+            st.session_state["mcp_keys_connected"] = False
+            return True
+
+        # Partial or no config in environment - show form
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.markdown("### 🔧 Enter Configuration")
-            
-            # Handle post-connection state to prevent form re-display
-            if st.session_state.get("mcp_keys_connected", False):
-                st.session_state["mcp_keys_connected"] = False
-                return True
-                
-            api_key_input = st.text_input(
-                "OpenAI API Key",
-                type="password",
-                placeholder="sk-proj-...",
-                value=api_key,
-                key="mcp_api_key_input"
-            )
-                
-            mcp_url_input = st.text_input(
-                "MCP Server URL",
-                placeholder="https://example.com/mcp",
-                value=mcp_url if mcp_url else "https://example.com/mcp",
-                key="mcp_url_input"
-            )
-            
-            if st.button("Connect", type="primary", use_container_width=True):
-                valid_openai = ValidationHelper.validate_openai_key(api_key_input)
-                valid_mcp_url = ValidationHelper.validate_mcp_url(mcp_url_input)
-                
-                if valid_openai and valid_mcp_url:
-                    st.session_state["mcp_openai_key"] = api_key_input
-                    st.session_state["mcp_server_url"] = mcp_url_input
-                    st.session_state["mcp_keys_connected"] = True
-                    st.rerun()
-                else:
-                    if not valid_openai:
-                        st.error("❌ Please enter a valid OpenAI API key")
-                    if not valid_mcp_url:
-                        st.error("❌ Please enter a valid MCP URL")
+
+            if not env_api_key and not env_mcp_url:
+                st.warning("⚠️ No configuration found in environment. Please enter manually (not recommended for production).")
+            elif not env_api_key:
+                st.warning("⚠️ OpenAI API key not found in environment.")
+                mcp_url = env_mcp_url
+                st.session_state["mcp_server_url"] = mcp_url
+            elif not env_mcp_url:
+                st.warning("⚠️ MCP Server URL not found in environment.")
+                api_key = env_api_key
+                st.session_state["mcp_openai_key"] = api_key
+
+            # API key input (if not in env)
+            if not api_key and not env_api_key:
+                api_key_input = st.text_input(
+                    "OpenAI API Key",
+                    type="password",
+                    placeholder="sk-proj-...",
+                    key="mcp_api_key_input"
+                )
+            else:
+                api_key_input = api_key or env_api_key
+                st.success("✅ OpenAI API key configured")
+
+            # MCP URL input (if not in env)
+            if not mcp_url and not env_mcp_url:
+                mcp_url_input = st.text_input(
+                    "MCP Server URL",
+                    placeholder="http://localhost:8000",
+                    key="mcp_url_input"
+                )
+            else:
+                mcp_url_input = mcp_url or env_mcp_url
+                st.success("✅ MCP Server URL configured")
+
+            # Only show connect button if we need user input
+            if (not api_key and not env_api_key) or (not mcp_url and not env_mcp_url):
+                if st.button("Connect", type="primary", use_container_width=True):
+                    valid_openai = ValidationHelper.validate_openai_key(api_key_input)
+                    valid_mcp_url = ValidationHelper.validate_mcp_url(mcp_url_input)
+
+                    if valid_openai and valid_mcp_url:
+                        st.session_state["mcp_openai_key"] = api_key_input
+                        st.session_state["mcp_server_url"] = mcp_url_input
+                        st.session_state["mcp_keys_connected"] = True
+                        st.rerun()
+                    else:
+                        if not valid_openai:
+                            st.error("❌ Please enter a valid OpenAI API key")
+                        if not valid_mcp_url:
+                            st.error("❌ Please enter a valid MCP URL")
         return False
-    
+
     return True
 
 def display_messages() -> None:

@@ -10,26 +10,39 @@ from typing import Dict, Any, List
 
 from ui_components import ChatbotUI, APIKeyUI
 from langchain_helpers import BasicChatbotHelper, ValidationHelper
+from config import Config
 
 
 def configure_api_key() -> bool:
     """Configure OpenAI API key for the chatbot.
-    
+
     Handles API key collection, validation, and session state management.
     Uses centralized UI components for consistent styling.
-    
+    Prioritizes environment variables over user input for security.
+
     Returns:
         True if API key is configured and valid, False otherwise
     """
+    # Check if API key already exists in session state
     api_key = st.session_state.get("basic_openai_key", "")
-    
+
     if not api_key:
+        # Try to get from environment variables first (secure)
+        env_api_key = Config.get_openai_key()
+
+        if env_api_key:
+            # Found in environment - use it directly
+            st.session_state["basic_openai_key"] = env_api_key
+            st.info("🔐 Using API key from secure configuration")
+            return True
+
         # Check if we just connected (avoid showing form again)
         if st.session_state.get("basic_api_key_connected", False):
             st.session_state["basic_api_key_connected"] = False
             return True
-        
-        # Use centralized API key form
+
+        # No env key - show input form as fallback (development mode)
+        st.warning("⚠️ No API key found in environment. Please enter manually (not recommended for production).")
         inputs = APIKeyUI.render_api_key_form(
             title="🔑 Enter API Key",
             inputs=[{
@@ -39,7 +52,7 @@ def configure_api_key() -> bool:
                 "password": True
             }]
         )
-        
+
         if inputs:
             api_key_input = inputs.get("basic_api_key_input", "")
             if ValidationHelper.validate_openai_key(api_key_input):
@@ -49,7 +62,7 @@ def configure_api_key() -> bool:
             else:
                 st.error("❌ Invalid key format")
         return False
-    
+
     return True
 
 def display_messages() -> None:
