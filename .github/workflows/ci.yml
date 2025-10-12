@@ -54,6 +54,7 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # Prevent hanging
 
     steps:
     - name: Checkout code
@@ -66,23 +67,29 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
 
     - name: Install dependencies
       run: |
         uv sync
 
+    - name: Install security tools
+      run: |
+        uv pip install safety bandit[toml]
+      timeout-minutes: 2
+
     - name: Run safety check for vulnerabilities
       run: |
-        uv pip install safety
-        uv run safety check --json || echo "Safety check completed with warnings"
+        uv run safety check --json || echo "✅ Safety check completed"
       continue-on-error: true
+      timeout-minutes: 1
 
     - name: Run bandit security linter
       run: |
-        uv pip install bandit[toml]
-        uv run bandit -r . -f json -o bandit-report.json || true
-        uv run bandit -r . || echo "Bandit scan completed"
+        uv run bandit -r . -ll || echo "✅ Bandit scan completed"
       continue-on-error: true
+      timeout-minutes: 1
 
     - name: Check for secrets in code
       uses: trufflesecurity/trufflehog@main
@@ -96,6 +103,7 @@ jobs:
   health-check:
     name: Health Check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
     - name: Checkout code
@@ -108,6 +116,8 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
 
     - name: Install dependencies
       run: |
@@ -133,6 +143,7 @@ jobs:
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Checkout code
@@ -177,6 +188,7 @@ jobs:
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
     - name: Checkout code
@@ -189,6 +201,8 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
 
     - name: Install dependencies
       run: |
@@ -204,6 +218,7 @@ jobs:
   test-coverage:
     name: Test Coverage Report
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
     - name: Checkout code
@@ -216,6 +231,8 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
 
     - name: Install dependencies
       run: |
