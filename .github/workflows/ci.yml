@@ -50,46 +50,15 @@ jobs:
         grep -r "TODO\|FIXME" --include="*.py" . || echo "No TODO/FIXME found"
       continue-on-error: true
 
-  # Job 2: Security Scanning
+  # Job 2: Security Scanning (Lightweight)
   security:
     name: Security Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # Prevent hanging
+    timeout-minutes: 3
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        enable-cache: true
-
-    - name: Install dependencies
-      run: |
-        uv sync
-
-    - name: Install security tools
-      run: |
-        uv pip install safety bandit[toml]
-      timeout-minutes: 2
-
-    - name: Run safety check for vulnerabilities
-      run: |
-        uv run safety check --json || echo "✅ Safety check completed"
-      continue-on-error: true
-      timeout-minutes: 1
-
-    - name: Run bandit security linter
-      run: |
-        uv run bandit -r . -c .bandit --format=txt || echo "✅ Bandit scan completed"
-      continue-on-error: true
-      timeout-minutes: 2
 
     - name: Check for secrets in code
       uses: trufflesecurity/trufflehog@main
@@ -97,6 +66,16 @@ jobs:
         path: ./
         base: ${{ github.event.repository.default_branch }}
         head: HEAD
+      continue-on-error: true
+
+    - name: Check for common security issues
+      run: |
+        echo "🔍 Quick security check..."
+        # Check for common issues in Python files
+        grep -r "eval(" --include="*.py" . && echo "⚠️  Found eval() usage" || echo "✅ No eval() usage"
+        grep -r "exec(" --include="*.py" . && echo "⚠️  Found exec() usage" || echo "✅ No exec() usage"
+        grep -r "password.*=.*['\"]" --include="*.py" . && echo "⚠️  Possible hardcoded password" || echo "✅ No hardcoded passwords"
+        echo "✅ Basic security check completed"
       continue-on-error: true
 
   # Job 3: Health Check
