@@ -7,12 +7,12 @@ for current information and real-time data queries.
 
 import streamlit as st
 import asyncio
-from typing import Dict, Any, List
+from typing import Any
 
-from ui_components import ChatbotUI, APIKeyUI
+from ui_components import ChatbotUI
 from langchain_helpers import AgentChatbotHelper, ValidationHelper
 from config import Config
-    
+
 
 def configure_api_keys() -> bool:
     """Configure OpenAI and Tavily API keys for the agent.
@@ -120,7 +120,7 @@ class ChatbotTools:
         openai_key = st.session_state.get("agent_openai_key", "")
         tavily_key = st.session_state.get("agent_tavily_key", "")
         return AgentChatbotHelper.setup_agent(openai_key, tavily_key)
-    
+
     def display_messages(self) -> None:
         """Display chat messages with web search context awareness.
         
@@ -147,18 +147,18 @@ class ChatbotTools:
         # Initialize agent-specific conversation history
         if "agent_messages" not in st.session_state:
             st.session_state.agent_messages = []
-            
+
         # Configure agent with web search capabilities
         agent = self.setup_agent()
-        
+
         # Render current conversation with search context
         self.display_messages()
-        
+
         # Process user query through web search agent
-        if (st.session_state.agent_messages and 
+        if (st.session_state.agent_messages and
             st.session_state.agent_messages[-1]["role"] == "user" and
             not st.session_state.get("agent_processing", False)):
-            
+
             st.session_state.agent_processing = True
             try:
                 # Show processing indicator
@@ -166,7 +166,7 @@ class ChatbotTools:
                     with st.spinner("Searching the web..."):
                         # Extract user query for web search processing
                         user_query = st.session_state.agent_messages[-1]["content"]
-                        
+
                         # Process query through agent with search capabilities
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
@@ -176,18 +176,18 @@ class ChatbotTools:
                             )
                         finally:
                             loop.close()
-                        
+
                         # Add assistant response
                         st.session_state.agent_messages.append({"role": "assistant", "content": response})
-                
+
                 st.session_state.agent_processing = False
                 st.rerun()
-                
+
             except Exception as e:
                 st.session_state.agent_processing = False
                 st.error(f"Error: {str(e)}")
                 st.rerun()
-        
+
         # Chat input for web search queries
         if prompt := st.chat_input("Ask me anything about current events..."):
             # Add user message to conversation history
@@ -204,15 +204,15 @@ def main() -> None:
     # Configure page with centralized UI components
     ChatbotUI.setup_page("Agent Chatbot", "🌐")
     ChatbotUI.render_page_header(
-        "🌐", 
-        "Chatbot Agent", 
+        "🌐",
+        "Chatbot Agent",
         "AI agent with real-time web search capabilities"
     )
-    
+
     # Validate required API keys before proceeding
     if not configure_api_keys():
         return
-    
+
     # Initialize and run the agent chatbot interface
     obj = ChatbotTools()
     obj.main()

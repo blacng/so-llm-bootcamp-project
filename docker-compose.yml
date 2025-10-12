@@ -28,10 +28,10 @@ services:
       # Mount source code for development (optional - comment out for production)
       - .:/app
     # Uncomment to use Docker secrets (recommended for production)
-    # secrets:
-    #   - openai_api_key
-    #   - tavily_api_key
-    #   - mcp_server_url
+    secrets:
+      - openai_api_key
+      - tavily_api_key
+      - mcp_server_url
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "healthcheck.py"]
@@ -52,8 +52,8 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     # Uncomment to use Docker secrets (recommended for production)
-    # secrets:
-    #   - openai_api_key
+    secrets:
+      - openai_api_key
     command: ["uv", "run", "python", "server.py"]
     restart: unless-stopped
     profiles:
@@ -73,10 +73,10 @@ networks:
 #   echo "your-tavily-key" > secrets/tavily_api_key.txt
 #   echo "http://mcp-server:8000" > secrets/mcp_server_url.txt
 # Then uncomment the secrets sections above and below
-# secrets:
-#   openai_api_key:
-#     file: ./secrets/openai_api_key.txt
-#   tavily_api_key:
-#     file: ./secrets/tavily_api_key.txt
-#   mcp_server_url:
-#     file: ./secrets/mcp_server_url.txt
+secrets:
+  openai_api_key:
+    file: ./secrets/openai_api_key.txt
+  tavily_api_key:
+    file: ./secrets/tavily_api_key.txt
+  mcp_server_url:
+    file: ./secrets/mcp_server_url.txt

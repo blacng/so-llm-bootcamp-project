@@ -7,9 +7,8 @@ LLM functionality, enabling extensible and context-aware AI interactions.
 
 import streamlit as st
 import asyncio
-from typing import Dict, Any, List
 
-from ui_components import ChatbotUI, APIKeyUI
+from ui_components import ChatbotUI
 from langchain_helpers import MCPHelper, ValidationHelper
 from config import Config
 
@@ -25,7 +24,7 @@ def setup_page() -> None:
         layout="wide",
         initial_sidebar_state="collapsed"
     )
-    
+
     # Enhanced visual styling
     st.markdown("""
     <style>
@@ -107,7 +106,7 @@ def setup_page() -> None:
         }
     </style>
     """, unsafe_allow_html=True)
-    
+
 
 def configure_mcp_settings() -> bool:
     """Configure OpenAI API key and MCP server URL.
@@ -230,7 +229,7 @@ def main() -> None:
     tool integration, and enhanced AI interactions.
     """
     setup_page()
-    
+
     # Page title - centered with enhanced styling
     st.markdown("""
     <div style='text-align: center; margin: 0.5rem 0 1rem 0;'>
@@ -242,23 +241,23 @@ def main() -> None:
         </p>
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Validate MCP configuration before proceeding
     if not configure_mcp_settings():
         return
-    
+
     # Initialize MCP agent-specific conversation history
     if "mcp_messages" not in st.session_state:
         st.session_state.mcp_messages = []
-    
+
     # Render conversation with MCP context awareness
     display_messages()
-    
+
     # Process query through MCP agent with tool access
-    if (st.session_state.mcp_messages and 
+    if (st.session_state.mcp_messages and
         st.session_state.mcp_messages[-1]["role"] == "user" and
         not st.session_state.get("mcp_processing", False)):
-        
+
         st.session_state.mcp_processing = True
         try:
             # Show processing indicator
@@ -266,48 +265,48 @@ def main() -> None:
                 with st.spinner("Processing with MCP agent..."):
                     # Extract user query for MCP processing
                     user_query = st.session_state.mcp_messages[-1]["content"]
-                    
+
                     # Retrieve configuration from session state
                     openai_api_key = st.session_state.get("mcp_openai_key", "")
                     mcp_server_url = st.session_state.get("mcp_server_url", "")
-                    
+
                     if openai_api_key and mcp_server_url:
                         try:
                             # Setup async event loop for MCP operations
                             loop = asyncio.new_event_loop()
                             asyncio.set_event_loop(loop)
-                            
+
                             try:
                                 # Initialize MCP agent with server connection
                                 agent = loop.run_until_complete(
                                     MCPHelper.get_agent(openai_api_key, mcp_server_url)
                                 )
-                                
+
                                 # Format conversation history for agent processing
                                 formatted_messages = [
-                                    {"role": msg["role"], "content": msg["content"]} 
+                                    {"role": msg["role"], "content": msg["content"]}
                                     for msg in st.session_state.mcp_messages
                                 ]
-                                
+
                                 # Process query through MCP agent
                                 response_text = loop.run_until_complete(
                                     MCPHelper.process_mcp_query(agent, formatted_messages)
                                 )
-                                
+
                             finally:
                                 loop.close()
-                                
+
                         except Exception as e:
                             response_text = f"❌ MCP Agent Error: {str(e)}"
                     else:
                         response_text = "❌ Configuration missing. Please check API key and MCP URL."
-                    
+
                     # Add assistant response
                     st.session_state.mcp_messages.append({"role": "assistant", "content": response_text})
-            
+
             st.session_state.mcp_processing = False
             st.rerun()
-            
+
         except Exception as e:
             st.session_state.mcp_processing = False
             st.error(f"Error: {str(e)}")
@@ -321,4 +320,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    

@@ -46,9 +46,13 @@ logs-mcp: ## Show only MCP server logs
 shell: ## Open shell in the app container
 	docker-compose exec streamlit-app /bin/bash
 
-health: ## Check application health
+health: ## Check application health (Docker runtime)
 	@echo "$(BLUE)Checking application health...$(NC)"
 	@curl -f http://localhost:8502/_stcore/health || echo "$(RED)Application is not healthy$(NC)"
+
+health-check: ## Run comprehensive health check script
+	@echo "$(BLUE)Running comprehensive health check...$(NC)"
+	@python tests/health_check.py
 
 clean: ## Remove containers, volumes, and images
 	@echo "$(RED)Cleaning up Docker resources...$(NC)"
@@ -86,7 +90,7 @@ format: ## Format code with ruff
 	@command -v ruff >/dev/null 2>&1 || { echo "$(RED)ruff not installed. Install with: pip install ruff$(NC)"; exit 1; }
 	ruff format .
 
-test: ## Run tests
+test: health-check ## Run all tests (health check first)
 	@echo "$(BLUE)Running tests...$(NC)"
 	docker-compose exec streamlit-app uv run pytest
 

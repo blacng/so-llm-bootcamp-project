@@ -6,9 +6,9 @@ Features automatic document processing, vector search, and contextual responses.
 """
 
 import streamlit as st
-from typing import List, Dict, Any
+from typing import List, Any
 
-from ui_components import ChatbotUI, APIKeyUI
+from ui_components import ChatbotUI
 from langchain_helpers import RAGHelper, ValidationHelper, PIIHelper
 from config import Config
 
@@ -20,12 +20,12 @@ def setup_page() -> None:
     upload interface and chat components.
     """
     st.set_page_config(
-        page_title="Chat with Documents", 
+        page_title="Chat with Documents",
         page_icon="📄",
         layout="wide",
         initial_sidebar_state="collapsed"
     )
-    
+
     # Enhanced visual styling
     st.markdown("""
     <style>
@@ -103,7 +103,7 @@ def setup_page() -> None:
         }
     </style>
     """, unsafe_allow_html=True)
-    
+
 
 def configure_api_key() -> bool:
     """Configure OpenAI API key for RAG functionality.
@@ -163,7 +163,7 @@ class CustomDataChatbot:
     Processes uploaded PDF documents, creates vector embeddings,
     and enables intelligent querying with contextual responses.
     """
-    
+
     def __init__(self) -> None:
         """Initialize the RAG chatbot with default settings."""
         self.openai_model = "gpt-4o-mini"
@@ -197,7 +197,7 @@ class CustomDataChatbot:
         st.session_state["rag_pii_entities"] = pii_entities
 
         return rag_app
-    
+
     def display_messages(self) -> None:
         """Display document-aware chat messages.
         
@@ -378,22 +378,22 @@ class CustomDataChatbot:
                         st.markdown("---")
                         st.markdown(f"**Method**: {st.session_state.rag_pii_method}")
                         st.success(
-                            f"✅ All PII has been anonymized before processing. "
-                            f"Your documents are now privacy-protected in the vector store."
+                            "✅ All PII has been anonymized before processing. "
+                            "Your documents are now privacy-protected in the vector store."
                         )
                 elif st.session_state.rag_anonymize_pii and not st.session_state.rag_pii_entities:
                     st.info("ℹ️ No PII detected in uploaded documents.")
 
         # Render conversation history with document context
         self.display_messages()
-        
+
         # Process document-based query and generate contextual response
         if (uploaded_files and
             st.session_state.rag_app and
             st.session_state.rag_messages and
             st.session_state.rag_messages[-1]["role"] == "user" and
             not st.session_state.get("rag_processing", False)):
-            
+
             st.session_state.rag_processing = True
             try:
                 # Show processing indicator
@@ -401,15 +401,15 @@ class CustomDataChatbot:
                     with st.spinner("Analyzing documents..."):
                         # Extract user query for document analysis
                         user_query = st.session_state.rag_messages[-1]["content"]
-                        
+
                         # Process query through RAG workflow
                         result = st.session_state.rag_app.invoke({
-                            "question": user_query, 
-                            "mode": "fact", 
-                            "documents": [], 
+                            "question": user_query,
+                            "mode": "fact",
+                            "documents": [],
                             "generation": ""
                         })
-                        
+
                         # Extract generated response with fallback
                         answer = (
                             result.get("generation", "").strip() or
@@ -445,10 +445,10 @@ class CustomDataChatbot:
 
                         # Add assistant response
                         st.session_state.rag_messages.append({"role": "assistant", "content": answer})
-                
+
                 st.session_state.rag_processing = False
                 st.rerun()
-                
+
             except Exception as e:
                 st.session_state.rag_processing = False
                 st.error(f"Error: {str(e)}")
@@ -498,7 +498,7 @@ def main() -> None:
     question-answering workflow with enhanced UI styling.
     """
     setup_page()
-    
+
     # Page title - centered with enhanced styling
     st.markdown("""
     <div style='text-align: center; margin: 0.5rem 0 1rem 0;'>
@@ -510,11 +510,11 @@ def main() -> None:
         </p>
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Validate API key configuration for document processing
     if not configure_api_key():
         return
-    
+
     # Initialize and run the document-aware chatbot
     app = CustomDataChatbot()
     app.main()

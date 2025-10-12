@@ -6,7 +6,6 @@ and reliable message processing.
 """
 
 import streamlit as st
-from typing import Dict, Any, List
 
 from ui_components import ChatbotUI, APIKeyUI
 from langchain_helpers import BasicChatbotHelper, ValidationHelper
@@ -85,47 +84,47 @@ def main() -> None:
     """
     # Use centralized UI setup
     ChatbotUI.setup_page("AI Chat", "🚀")
-    
+
     # Use centralized header component
     ChatbotUI.render_page_header(
-        "🚀", 
-        "Basic Chatbot", 
+        "🚀",
+        "Basic Chatbot",
         "AI conversation assistant with memory"
     )
-    
+
     # Validate API key configuration before proceeding
     if not configure_api_key():
         return
-    
-    
+
+
     # Initialize chat interface and processing logic
     with st.container():
-        
+
         # Configure LangChain with default chatbot settings
         config = BasicChatbotHelper.get_default_config()
         api_key = st.session_state.get("basic_openai_key", "")
-        
+
         # Ensure chain is properly initialized with current API key
-        if api_key and ("basic_chain" not in st.session_state or 
+        if api_key and ("basic_chain" not in st.session_state or
                        st.session_state.get("basic_current_api_key") != api_key):
             st.session_state.basic_chain = BasicChatbotHelper.build_chain(config, api_key)
             st.session_state.basic_current_api_key = api_key
         elif not api_key:
             st.error("API key not found. Please refresh the page.")
             return
-        
+
         # Initialize conversation history in session state
         if "basic_messages" not in st.session_state:
             st.session_state.basic_messages = []
-        
+
         # Render current conversation history
         display_messages()
-        
+
         # Process pending user message and generate AI response
-        if (st.session_state.basic_messages and 
+        if (st.session_state.basic_messages and
             st.session_state.basic_messages[-1]["role"] == "user" and
             not st.session_state.get("basic_processing", False)):
-            
+
             st.session_state.basic_processing = True
             try:
                 # Show processing indicator
@@ -134,20 +133,20 @@ def main() -> None:
                         # Get the last user message
                         user_input = st.session_state.basic_messages[-1]["content"]
                         response = BasicChatbotHelper.invoke_with_memory(
-                            st.session_state.basic_chain, 
-                            user_input, 
+                            st.session_state.basic_chain,
+                            user_input,
                             st.session_state.basic_messages
                         )
-                        
+
                         # Add assistant response
                         st.session_state.basic_messages.append({
-                            "role": "assistant", 
+                            "role": "assistant",
                             "content": response.content
                         })
-                
+
                 st.session_state.basic_processing = False
                 st.rerun()
-                
+
             except Exception as e:
                 st.session_state.basic_processing = False
                 st.error(f"Error: {str(e)}")
