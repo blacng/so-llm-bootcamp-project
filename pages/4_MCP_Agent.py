@@ -13,9 +13,10 @@ from ui_components import ChatbotUI
 from langchain_helpers import MCPHelper, ValidationHelper
 from config import Config
 
+
 def setup_page() -> None:
     """Set up the MCP agent page with enhanced styling.
-    
+
     Configures page layout and applies custom CSS optimized
     for MCP agent interactions and tool demonstrations.
     """
@@ -23,11 +24,12 @@ def setup_page() -> None:
         page_title="MCP Agent",
         page_icon="🔧",
         layout="wide",
-        initial_sidebar_state="collapsed"
+        initial_sidebar_state="collapsed",
     )
 
     # Enhanced visual styling
-    st.markdown("""
+    st.markdown(
+        """
     <style>
         /* Enhanced chat styling */
         .stChatMessage {
@@ -106,7 +108,9 @@ def setup_page() -> None:
             box-shadow: 0 2px 10px rgba(255, 107, 107, 0.2);
         }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def configure_mcp_settings() -> bool:
@@ -146,7 +150,9 @@ def configure_mcp_settings() -> bool:
             st.markdown("### 🔧 Enter Configuration")
 
             if not env_api_key and not env_mcp_url:
-                st.warning("⚠️ No configuration found in environment. Please enter manually (not recommended for production).")
+                st.warning(
+                    "⚠️ No configuration found in environment. Please enter manually (not recommended for production)."
+                )
             elif not env_api_key:
                 st.warning("⚠️ OpenAI API key not found in environment.")
                 mcp_url = env_mcp_url
@@ -162,7 +168,7 @@ def configure_mcp_settings() -> bool:
                     "OpenAI API Key",
                     type="password",
                     placeholder="sk-proj-...",
-                    key="mcp_api_key_input"
+                    key="mcp_api_key_input",
                 )
             else:
                 api_key_input = api_key or env_api_key
@@ -173,7 +179,7 @@ def configure_mcp_settings() -> bool:
                 mcp_url_input = st.text_input(
                     "MCP Server URL",
                     placeholder="http://localhost:8000",
-                    key="mcp_url_input"
+                    key="mcp_url_input",
                 )
             else:
                 mcp_url_input = mcp_url or env_mcp_url
@@ -199,9 +205,10 @@ def configure_mcp_settings() -> bool:
 
     return True
 
+
 def display_messages() -> None:
     """Display MCP agent chat messages with capability awareness.
-    
+
     Shows conversation history or informative welcome message
     highlighting the agent's MCP-powered capabilities and tools.
     """
@@ -223,16 +230,18 @@ Ask me anything! I'm powered by Model Context Protocol.
                 with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
                     st.write(message["content"])
 
+
 def main() -> None:
     """Main application function for the MCP agent page.
-    
+
     Orchestrates the complete MCP workflow including server connection,
     tool integration, and enhanced AI interactions.
     """
     setup_page()
 
     # Page title - centered with enhanced styling
-    st.markdown("""
+    st.markdown(
+        """
     <div style='text-align: center; margin: 0.5rem 0 1rem 0;'>
         <h1 style='font-size: 2.625rem; margin-bottom: 1rem; text-shadow: 0 0 30px rgba(0, 212, 170, 0.5);'>
             🔧 MCP Agent
@@ -241,7 +250,9 @@ def main() -> None:
             AI agent powered by Model Context Protocol
         </p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Validate MCP configuration before proceeding
     if not configure_mcp_settings():
@@ -263,10 +274,11 @@ def main() -> None:
     display_messages()
 
     # Process query through MCP agent with tool access
-    if (st.session_state.mcp_messages and
-        st.session_state.mcp_messages[-1]["role"] == "user" and
-        not st.session_state.get("mcp_processing", False)):
-
+    if (
+        st.session_state.mcp_messages
+        and st.session_state.mcp_messages[-1]["role"] == "user"
+        and not st.session_state.get("mcp_processing", False)
+    ):
         # Set processing flag and timestamp
         st.session_state.mcp_processing = True
         st.session_state.mcp_processing_start = time.time()
@@ -275,9 +287,6 @@ def main() -> None:
         with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
             with st.spinner("Processing with MCP agent..."):
                 try:
-                    # Extract user query for MCP processing
-                    user_query = st.session_state.mcp_messages[-1]["content"]
-
                     # Retrieve configuration from session state
                     openai_api_key = st.session_state.get("mcp_openai_key", "")
                     mcp_server_url = st.session_state.get("mcp_server_url", "")
@@ -302,7 +311,9 @@ def main() -> None:
 
                                 # Process query through MCP agent
                                 response_text = loop.run_until_complete(
-                                    MCPHelper.process_mcp_query(agent, formatted_messages)
+                                    MCPHelper.process_mcp_query(
+                                        agent, formatted_messages
+                                    )
                                 )
 
                             finally:
@@ -314,7 +325,9 @@ def main() -> None:
                         response_text = "❌ Configuration missing. Please check API key and MCP URL."
 
                     # Add assistant response
-                    st.session_state.mcp_messages.append({"role": "assistant", "content": response_text})
+                    st.session_state.mcp_messages.append(
+                        {"role": "assistant", "content": response_text}
+                    )
 
                     # Reset processing flag before rerun
                     st.session_state.mcp_processing = False
@@ -328,10 +341,12 @@ def main() -> None:
                     st.error(f"❌ Error: {str(e)}")
 
                     # Add error message to chat
-                    st.session_state.mcp_messages.append({
-                        "role": "assistant",
-                        "content": f"I encountered an error: {str(e)}. Please try again."
-                    })
+                    st.session_state.mcp_messages.append(
+                        {
+                            "role": "assistant",
+                            "content": f"I encountered an error: {str(e)}. Please try again.",
+                        }
+                    )
                     st.rerun()
 
     # MCP agent query input interface
@@ -339,6 +354,7 @@ def main() -> None:
         # Add user message to MCP conversation history
         st.session_state.mcp_messages.append({"role": "user", "content": prompt})
         st.rerun()
+
 
 if __name__ == "__main__":
     main()

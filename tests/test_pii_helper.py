@@ -37,8 +37,10 @@ def test_pii_detection():
     if entities:
         print(f"Found {len(entities)} PII entities:\n")
         for i, entity in enumerate(entities, 1):
-            print(f"{i}. {entity['type']}: '{entity['text']}' "
-                  f"(confidence: {entity['score']:.2f})")
+            print(
+                f"{i}. {entity['type']}: '{entity['text']}' "
+                f"(confidence: {entity['score']:.2f})"
+            )
 
         # Show statistics
         print(f"\n{PIIHelper.format_pii_report(entities)}")
@@ -65,7 +67,7 @@ def test_pii_anonymization():
         "replace": "Replace with placeholders",
         "mask": "Mask with asterisks",
         "hash": "Hash values (SHA256)",
-        "redact": "Redact completely"
+        "redact": "Redact completely",
     }
 
     for method, description in methods.items():
@@ -94,9 +96,7 @@ def test_selective_anonymization():
     print("\nAnonymizing ONLY email addresses:")
     print("-" * 60)
     anonymized, entities = PIIHelper.anonymize_text(
-        test_text,
-        method="replace",
-        entities_to_anonymize=["EMAIL_ADDRESS"]
+        test_text, method="replace", entities_to_anonymize=["EMAIL_ADDRESS"]
     )
     print(f"Result: {anonymized}")
     print(f"Detected: {[e['type'] for e in entities]}")
@@ -105,9 +105,7 @@ def test_selective_anonymization():
     print("\nAnonymizing ONLY phone numbers:")
     print("-" * 60)
     anonymized, entities = PIIHelper.anonymize_text(
-        test_text,
-        method="replace",
-        entities_to_anonymize=["PHONE_NUMBER"]
+        test_text, method="replace", entities_to_anonymize=["PHONE_NUMBER"]
     )
     print(f"Result: {anonymized}")
     print(f"Detected: {[e['type'] for e in entities]}")
@@ -165,7 +163,7 @@ def test_supported_entities():
 
     # Display in columns
     for i in range(0, len(entities), 3):
-        row = entities[i:i+3]
+        row = entities[i : i + 3]
         print("  ".join(f"{entity:25}" for entity in row))
 
 

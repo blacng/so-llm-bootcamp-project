@@ -16,7 +16,7 @@ from config import Config
 
 def setup_page() -> None:
     """Set up the RAG page with enhanced styling.
-    
+
     Configures page layout and applies custom CSS for document
     upload interface and chat components.
     """
@@ -24,11 +24,12 @@ def setup_page() -> None:
         page_title="Chat with Documents",
         page_icon="📄",
         layout="wide",
-        initial_sidebar_state="collapsed"
+        initial_sidebar_state="collapsed",
     )
 
     # Enhanced visual styling
-    st.markdown("""
+    st.markdown(
+        """
     <style>
         /* Enhanced chat styling */
         .stChatMessage {
@@ -103,7 +104,9 @@ def setup_page() -> None:
             background: linear-gradient(135deg, #00d4aa, #00a883);
         }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def configure_api_key() -> bool:
@@ -138,13 +141,15 @@ def configure_api_key() -> bool:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.markdown("### 🔑 Enter API Key")
-            st.warning("⚠️ No API key found in environment. Please enter manually (not recommended for production).")
+            st.warning(
+                "⚠️ No API key found in environment. Please enter manually (not recommended for production)."
+            )
 
             api_key_input = st.text_input(
                 "OpenAI API Key",
                 type="password",
                 placeholder="sk-proj-...",
-                key="rag_api_key_input"
+                key="rag_api_key_input",
             )
 
             if st.button("Connect", type="primary", use_container_width=True):
@@ -158,9 +163,10 @@ def configure_api_key() -> bool:
 
     return True
 
+
 class CustomDataChatbot:
     """RAG-powered chatbot for document question answering.
-    
+
     Processes uploaded PDF documents, creates vector embeddings,
     and enables intelligent querying with contextual responses.
     """
@@ -191,7 +197,7 @@ class CustomDataChatbot:
             api_key,
             anonymize_pii=anonymize_pii,
             pii_method=pii_method,
-            use_cache=use_cache
+            use_cache=use_cache,
         )
 
         # Store detected PII entities for reporting
@@ -201,7 +207,7 @@ class CustomDataChatbot:
 
     def display_messages(self) -> None:
         """Display document-aware chat messages.
-        
+
         Shows conversation history with document context awareness
         and helpful prompts for document-based queries.
         """
@@ -211,7 +217,9 @@ class CustomDataChatbot:
                     with st.chat_message("user", avatar=ChatbotUI.get_user_avatar()):
                         st.write(message["content"])
                 else:
-                    with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
+                    with st.chat_message(
+                        "assistant", avatar=ChatbotUI.get_bot_avatar()
+                    ):
                         st.write(message["content"])
 
     def main(self) -> None:
@@ -259,7 +267,7 @@ class CustomDataChatbot:
                 "Enable PII Detection & Anonymization",
                 value=st.session_state.rag_anonymize_pii,
                 help="Automatically detect and anonymize sensitive information in uploaded documents",
-                disabled=not pii_available
+                disabled=not pii_available,
             )
             st.session_state.rag_anonymize_pii = anonymize_pii
 
@@ -269,14 +277,14 @@ class CustomDataChatbot:
                     "Replace with placeholders (e.g., <PERSON>, <EMAIL>)": "replace",
                     "Mask with asterisks (e.g., ****)": "mask",
                     "Hash values (SHA256)": "hash",
-                    "Redact completely": "redact"
+                    "Redact completely": "redact",
                 }
 
                 selected_method_label = st.selectbox(
                     "Anonymization Method",
                     options=list(method_map.keys()),
                     index=0,
-                    help="Choose how to handle detected PII"
+                    help="Choose how to handle detected PII",
                 )
                 st.session_state.rag_pii_method = method_map[selected_method_label]
 
@@ -294,7 +302,7 @@ class CustomDataChatbot:
                 "Detect PII in user queries",
                 value=st.session_state.rag_detect_query_pii,
                 help="Warn when queries contain sensitive information",
-                disabled=not pii_available
+                disabled=not pii_available,
             )
             st.session_state.rag_detect_query_pii = detect_query_pii
 
@@ -305,13 +313,14 @@ class CustomDataChatbot:
             use_cache = st.checkbox(
                 "Enable smart caching",
                 value=st.session_state.rag_use_cache,
-                help="Cache processed documents for instant reload on page refresh (recommended)"
+                help="Cache processed documents for instant reload on page refresh (recommended)",
             )
             st.session_state.rag_use_cache = use_cache
 
             if use_cache:
                 # Show cache statistics
                 from langchain_helpers import RAGHelper
+
                 cache_stats = RAGHelper.get_cache_statistics()
 
                 if cache_stats["total_caches"] > 0:
@@ -324,15 +333,20 @@ class CustomDataChatbot:
                     # Add clear cache button
                     if st.button("🗑️ Clear All Caches"):
                         import shutil
+
                         if RAGHelper.CACHE_DIR.exists():
                             shutil.rmtree(RAGHelper.CACHE_DIR)
                             RAGHelper.CACHE_DIR.mkdir(parents=True, exist_ok=True)
                             st.success("✅ All caches cleared!")
                             st.rerun()
                 else:
-                    st.info("💡 No caches yet. Upload documents to create your first cache!")
+                    st.info(
+                        "💡 No caches yet. Upload documents to create your first cache!"
+                    )
             else:
-                st.warning("⚠️ Caching disabled. Documents will be reprocessed on every page refresh.")
+                st.warning(
+                    "⚠️ Caching disabled. Documents will be reprocessed on every page refresh."
+                )
 
         # Centered document upload interface
         col1, col2, col3 = st.columns([2, 1.5, 2])
@@ -340,7 +354,7 @@ class CustomDataChatbot:
             uploaded_files = st.file_uploader(
                 label="**Upload PDF files to chat with your documents**",
                 type=["pdf"],
-                accept_multiple_files=True
+                accept_multiple_files=True,
             )
 
             # Document processing handled automatically upon upload
@@ -350,7 +364,9 @@ class CustomDataChatbot:
         # Process documents when uploaded or changed
         if uploaded_files:
             current_files = {f.name for f in uploaded_files}
-            previous_files = {f.name for f in st.session_state.get("rag_uploaded_files", [])}
+            previous_files = {
+                f.name for f in st.session_state.get("rag_uploaded_files", [])
+            }
 
             # Rebuild RAG system if files changed or system not initialized
             if current_files != previous_files or st.session_state.rag_app is None:
@@ -365,15 +381,23 @@ class CustomDataChatbot:
                     st.session_state.rag_app = self.setup_graph(uploaded_files)
 
                 # Display PII detection report if PII was detected
-                if st.session_state.rag_anonymize_pii and st.session_state.rag_pii_entities:
+                if (
+                    st.session_state.rag_anonymize_pii
+                    and st.session_state.rag_pii_entities
+                ):
                     pii_entities = st.session_state.rag_pii_entities
 
-                    with st.expander(f"🔍 PII Detection Report ({len(pii_entities)} entities found)", expanded=True):
+                    with st.expander(
+                        f"🔍 PII Detection Report ({len(pii_entities)} entities found)",
+                        expanded=True,
+                    ):
                         # Generate statistics
                         stats = PIIHelper.get_pii_statistics(pii_entities)
 
                         st.markdown("**Summary by Type:**")
-                        for entity_type, count in sorted(stats.items(), key=lambda x: x[1], reverse=True):
+                        for entity_type, count in sorted(
+                            stats.items(), key=lambda x: x[1], reverse=True
+                        ):
                             st.markdown(f"- **{entity_type}**: {count}")
 
                         st.markdown("---")
@@ -382,7 +406,10 @@ class CustomDataChatbot:
                             "✅ All PII has been anonymized before processing. "
                             "Your documents are now privacy-protected in the vector store."
                         )
-                elif st.session_state.rag_anonymize_pii and not st.session_state.rag_pii_entities:
+                elif (
+                    st.session_state.rag_anonymize_pii
+                    and not st.session_state.rag_pii_entities
+                ):
                     st.info("ℹ️ No PII detected in uploaded documents.")
 
         # Safety: Reset stuck processing flag (timeout after 90 seconds for RAG)
@@ -397,12 +424,13 @@ class CustomDataChatbot:
         self.display_messages()
 
         # Process document-based query and generate contextual response
-        if (uploaded_files and
-            st.session_state.rag_app and
-            st.session_state.rag_messages and
-            st.session_state.rag_messages[-1]["role"] == "user" and
-            not st.session_state.get("rag_processing", False)):
-
+        if (
+            uploaded_files
+            and st.session_state.rag_app
+            and st.session_state.rag_messages
+            and st.session_state.rag_messages[-1]["role"] == "user"
+            and not st.session_state.get("rag_processing", False)
+        ):
             # Set processing flag and timestamp
             st.session_state.rag_processing = True
             st.session_state.rag_processing_start = time.time()
@@ -415,34 +443,41 @@ class CustomDataChatbot:
                         user_query = st.session_state.rag_messages[-1]["content"]
 
                         # Process query through RAG workflow
-                        result = st.session_state.rag_app.invoke({
-                            "question": user_query,
-                            "mode": "fact",
-                            "documents": [],
-                            "generation": ""
-                        })
+                        result = st.session_state.rag_app.invoke(
+                            {
+                                "question": user_query,
+                                "mode": "fact",
+                                "documents": [],
+                                "generation": "",
+                            }
+                        )
 
                         # Extract generated response with fallback
                         answer = (
-                            result.get("generation", "").strip() or
-                            "I couldn't find enough information in the documents to answer that."
+                            result.get("generation", "").strip()
+                            or "I couldn't find enough information in the documents to answer that."
                         )
 
                         # SAFETY LAYER: Detect PII leakage in response
                         # This catches any PII that might have slipped through if documents
                         # were processed without anonymization enabled
-                        if st.session_state.rag_anonymize_pii and PIIHelper.is_available():
-                            response_pii = PIIHelper.detect_pii(answer, score_threshold=0.7)
+                        if (
+                            st.session_state.rag_anonymize_pii
+                            and PIIHelper.is_available()
+                        ):
+                            response_pii = PIIHelper.detect_pii(
+                                answer, score_threshold=0.7
+                            )
 
                             if response_pii:
                                 # PII detected in response - anonymize it as safety measure
-                                pii_types = list(set([e['type'] for e in response_pii]))
+                                pii_types = list(set([e["type"] for e in response_pii]))
 
                                 # Anonymize the response
                                 anonymized_answer, _ = PIIHelper.anonymize_text(
                                     answer,
                                     method=st.session_state.rag_pii_method,
-                                    score_threshold=0.7
+                                    score_threshold=0.7,
                                 )
 
                                 # Add warning message
@@ -456,7 +491,9 @@ class CustomDataChatbot:
                                 answer = warning_msg
 
                         # Add assistant response
-                        st.session_state.rag_messages.append({"role": "assistant", "content": answer})
+                        st.session_state.rag_messages.append(
+                            {"role": "assistant", "content": answer}
+                        )
 
                         # Reset processing flag before rerun
                         st.session_state.rag_processing = False
@@ -470,10 +507,12 @@ class CustomDataChatbot:
                         st.error(f"❌ Error: {str(e)}")
 
                         # Add error message to chat
-                        st.session_state.rag_messages.append({
-                            "role": "assistant",
-                            "content": f"I encountered an error: {str(e)}. Please try again."
-                        })
+                        st.session_state.rag_messages.append(
+                            {
+                                "role": "assistant",
+                                "content": f"I encountered an error: {str(e)}. Please try again.",
+                            }
+                        )
                         st.rerun()
 
         # Show query PII warning if it was detected in last query
@@ -499,10 +538,10 @@ class CustomDataChatbot:
 
                 if query_pii_entities:
                     # Store PII detection info to show after rerun
-                    pii_types = list(set([e['type'] for e in query_pii_entities]))
+                    pii_types = list(set([e["type"] for e in query_pii_entities]))
                     st.session_state["rag_last_query_pii"] = {
                         "count": len(query_pii_entities),
-                        "types": pii_types
+                        "types": pii_types,
                     }
                 else:
                     st.session_state["rag_last_query_pii"] = None
@@ -513,16 +552,18 @@ class CustomDataChatbot:
             st.session_state.rag_messages.append({"role": "user", "content": prompt})
             st.rerun()
 
+
 def main() -> None:
     """Main application function for the RAG chatbot page.
-    
+
     Orchestrates document upload, processing, and intelligent
     question-answering workflow with enhanced UI styling.
     """
     setup_page()
 
     # Page title - centered with enhanced styling
-    st.markdown("""
+    st.markdown(
+        """
     <div style='text-align: center; margin: 0.5rem 0 1rem 0;'>
         <h1 style='font-size: 2.625rem; margin-bottom: 1rem; text-shadow: 0 0 30px rgba(0, 212, 170, 0.5);'>
             📚 Chat with your Data
@@ -531,7 +572,9 @@ def main() -> None:
             Upload documents and get intelligent answers using RAG
         </p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Validate API key configuration for document processing
     if not configure_api_key():
@@ -540,6 +583,7 @@ def main() -> None:
     # Initialize and run the document-aware chatbot
     app = CustomDataChatbot()
     app.main()
+
 
 # Application entry point
 if __name__ == "__main__":

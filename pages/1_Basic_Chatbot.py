@@ -42,15 +42,19 @@ def configure_api_key() -> bool:
             return True
 
         # No env key - show input form as fallback (development mode)
-        st.warning("⚠️ No API key found in environment. Please enter manually (not recommended for production).")
+        st.warning(
+            "⚠️ No API key found in environment. Please enter manually (not recommended for production)."
+        )
         inputs = APIKeyUI.render_api_key_form(
             title="🔑 Enter API Key",
-            inputs=[{
-                "key": "basic_api_key_input",
-                "label": "OpenAI API Key",
-                "placeholder": "sk-proj-...",
-                "password": True
-            }]
+            inputs=[
+                {
+                    "key": "basic_api_key_input",
+                    "label": "OpenAI API Key",
+                    "placeholder": "sk-proj-...",
+                    "password": True,
+                }
+            ],
         )
 
         if inputs:
@@ -65,18 +69,20 @@ def configure_api_key() -> bool:
 
     return True
 
+
 def display_messages() -> None:
     """Display chat messages using centralized UI components.
-    
+
     Shows conversation history or welcome message if no messages exist.
     Uses the ChatbotUI component for consistent message rendering.
     """
     if not ChatbotUI.display_chat_messages(st.session_state.basic_messages):
         st.info("🤖 Ask me anything and I'll be happy to help!")
 
+
 def main() -> None:
     """Main application function.
-    
+
     Orchestrates the entire chatbot page including:
     - Page setup and styling
     - API key configuration
@@ -88,27 +94,27 @@ def main() -> None:
 
     # Use centralized header component
     ChatbotUI.render_page_header(
-        "🚀",
-        "Basic Chatbot",
-        "AI conversation assistant with memory"
+        "🚀", "Basic Chatbot", "AI conversation assistant with memory"
     )
 
     # Validate API key configuration before proceeding
     if not configure_api_key():
         return
 
-
     # Initialize chat interface and processing logic
     with st.container():
-
         # Configure LangChain with default chatbot settings
         config = BasicChatbotHelper.get_default_config()
         api_key = st.session_state.get("basic_openai_key", "")
 
         # Ensure chain is properly initialized with current API key
-        if api_key and ("basic_chain" not in st.session_state or
-                       st.session_state.get("basic_current_api_key") != api_key):
-            st.session_state.basic_chain = BasicChatbotHelper.build_chain(config, api_key)
+        if api_key and (
+            "basic_chain" not in st.session_state
+            or st.session_state.get("basic_current_api_key") != api_key
+        ):
+            st.session_state.basic_chain = BasicChatbotHelper.build_chain(
+                config, api_key
+            )
             st.session_state.basic_current_api_key = api_key
         elif not api_key:
             st.error("API key not found. Please refresh the page.")
@@ -130,10 +136,11 @@ def main() -> None:
         display_messages()
 
         # Process pending user message and generate AI response
-        if (st.session_state.basic_messages and
-            st.session_state.basic_messages[-1]["role"] == "user" and
-            not st.session_state.get("basic_processing", False)):
-
+        if (
+            st.session_state.basic_messages
+            and st.session_state.basic_messages[-1]["role"] == "user"
+            and not st.session_state.get("basic_processing", False)
+        ):
             # Set processing flag and timestamp
             st.session_state.basic_processing = True
             st.session_state.basic_processing_start = time.time()
@@ -147,14 +154,13 @@ def main() -> None:
                         response = BasicChatbotHelper.invoke_with_memory(
                             st.session_state.basic_chain,
                             user_input,
-                            st.session_state.basic_messages
+                            st.session_state.basic_messages,
                         )
 
                         # Add assistant response
-                        st.session_state.basic_messages.append({
-                            "role": "assistant",
-                            "content": response.content
-                        })
+                        st.session_state.basic_messages.append(
+                            {"role": "assistant", "content": response.content}
+                        )
 
                         # Reset processing flag before rerun
                         st.session_state.basic_processing = False
@@ -168,10 +174,12 @@ def main() -> None:
                         st.error(f"❌ Error: {str(e)}")
 
                         # Add error message to chat
-                        st.session_state.basic_messages.append({
-                            "role": "assistant",
-                            "content": f"I encountered an error: {str(e)}. Please try again."
-                        })
+                        st.session_state.basic_messages.append(
+                            {
+                                "role": "assistant",
+                                "content": f"I encountered an error: {str(e)}. Please try again.",
+                            }
+                        )
                         st.rerun()
 
     # Chat input - outside container to prevent shifting
@@ -179,6 +187,7 @@ def main() -> None:
         # Add user message and rerun to show it first
         st.session_state.basic_messages.append({"role": "user", "content": prompt})
         st.rerun()
+
 
 if __name__ == "__main__":
     main()

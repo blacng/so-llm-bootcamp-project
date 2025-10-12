@@ -4,10 +4,7 @@ This script tests the complete PII detection and anonymization workflow
 integrated into the Chat with Your Data chatbot.
 """
 
-import os
 import sys
-from io import BytesIO
-from typing import List, Dict, Any
 from langchain_helpers import RAGHelper, PIIHelper
 
 
@@ -66,7 +63,7 @@ def test_pii_detection():
     # Detect PII
     entities = PIIHelper.detect_pii(test_content)
 
-    print(f"\n✅ PII Detection completed")
+    print("\n✅ PII Detection completed")
     print(f"   Found {len(entities)} PII entities")
 
     # Display report
@@ -120,7 +117,7 @@ def test_rag_integration():
     class MockFile:
         def __init__(self, name: str, content: str):
             self.name = name
-            self._content = content.encode('utf-8')
+            self._content = content.encode("utf-8")
 
         def getvalue(self):
             return self._content
@@ -135,17 +132,18 @@ def test_rag_integration():
 
     # Verify function signature
     import inspect
+
     sig = inspect.signature(RAGHelper.setup_rag_system)
     params = list(sig.parameters.keys())
 
-    required_params = ['anonymize_pii', 'pii_method', 'pii_entities']
+    required_params = ["anonymize_pii", "pii_method", "pii_entities"]
     has_all_params = all(param in params for param in required_params)
 
     if has_all_params:
-        print(f"\n✅ RAGHelper.setup_rag_system has all required PII parameters")
+        print("\n✅ RAGHelper.setup_rag_system has all required PII parameters")
         print(f"   Parameters: {params}")
     else:
-        print(f"\n❌ FAILED: Missing PII parameters in RAGHelper.setup_rag_system")
+        print("\n❌ FAILED: Missing PII parameters in RAGHelper.setup_rag_system")
         return False
 
     return True
@@ -174,7 +172,7 @@ def test_query_pii_detection():
     for query in test_queries:
         entities = PIIHelper.detect_pii(query, score_threshold=0.6)
         has_pii = "⚠️  HAS PII" if entities else "✅ Clean"
-        entity_types = [e['type'] for e in entities] if entities else []
+        entity_types = [e["type"] for e in entities] if entities else []
 
         print(f"\n{has_pii}")
         print(f"  Query: {query}")
@@ -202,7 +200,9 @@ def test_end_to_end_workflow():
 
     # Simulate PII detection and anonymization
     print("\n🔍 Step 2: Detect and anonymize PII")
-    anonymized_content, entities = PIIHelper.anonymize_text(doc_content, method="replace")
+    anonymized_content, entities = PIIHelper.anonymize_text(
+        doc_content, method="replace"
+    )
     stats = PIIHelper.get_pii_statistics(entities)
 
     print(f"   Detected {len(entities)} PII entities")
@@ -216,19 +216,19 @@ def test_end_to_end_workflow():
 
     if query_entities:
         print(f"   ⚠️  Query contains PII: {[e['type'] for e in query_entities]}")
-        print(f"   Warning would be shown to user")
+        print("   Warning would be shown to user")
     else:
-        print(f"   ✅ Query is clean")
+        print("   ✅ Query is clean")
 
     # Simulate processing
     print("\n⚙️  Step 4: Process query with anonymized documents")
-    print(f"   Documents processed with anonymized content")
-    print(f"   Vector embeddings created from privacy-protected text")
+    print("   Documents processed with anonymized content")
+    print("   Vector embeddings created from privacy-protected text")
 
     # Simulate response
     print("\n📊 Step 5: Generate response")
-    print(f"   Response generated using anonymized document chunks")
-    print(f"   PII remains protected throughout the workflow")
+    print("   Response generated using anonymized document chunks")
+    print("   PII remains protected throughout the workflow")
 
     print("\n✅ End-to-end workflow simulation completed successfully")
     return True

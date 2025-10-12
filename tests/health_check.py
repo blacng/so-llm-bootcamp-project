@@ -31,7 +31,7 @@ def print_section(title: str) -> None:
     """Print a formatted section header."""
     print(f"\n{'=' * 60}")
     print(f"{title}")
-    print('=' * 60)
+    print("=" * 60)
 
 
 def test_imports() -> bool:
@@ -42,20 +42,23 @@ def test_imports() -> bool:
     """
     print("\n🔍 Testing imports...")
     try:
-        from config import Config
+        from config import Config  # noqa: F401
+
         print("  ✓ config.py imports successfully")
 
-        from langchain_helpers import (
+        from langchain_helpers import (  # noqa: F401
             BasicChatbotHelper,
             AgentChatbotHelper,
             RAGHelper,
             MCPHelper,
             ValidationHelper,
-            PIIHelper
+            PIIHelper,
         )
+
         print("  ✓ langchain_helpers.py imports successfully")
 
-        from ui_components import ChatbotUI, APIKeyUI, HomePageUI
+        from ui_components import ChatbotUI, APIKeyUI, HomePageUI  # noqa: F401
+
         print("  ✓ ui_components.py imports successfully")
 
         return True
@@ -89,20 +92,24 @@ def test_environment_config() -> bool:
         print(f"  ✓ Configuration validation: {validation['environment']} mode")
 
         # Report key presence
-        if validation['openai_key_present']:
+        if validation["openai_key_present"]:
             print("  ✓ OpenAI API key detected")
         else:
             print("  ⚠ OpenAI API key not found (will require manual input)")
 
-        if validation['tavily_key_present']:
+        if validation["tavily_key_present"]:
             print("  ✓ Tavily API key detected")
         else:
-            print("  ⚠ Tavily API key not found (search features will require manual input)")
+            print(
+                "  ⚠ Tavily API key not found (search features will require manual input)"
+            )
 
-        if validation['mcp_server_url_present']:
+        if validation["mcp_server_url_present"]:
             print("  ✓ MCP Server URL detected")
         else:
-            print("  ⚠ MCP Server URL not found (MCP features will require manual input)")
+            print(
+                "  ⚠ MCP Server URL not found (MCP features will require manual input)"
+            )
 
         return True
     except Exception as e:
@@ -120,16 +127,16 @@ def test_syntax() -> bool:
     import ast
 
     files = [
-        'config.py',
-        'langchain_helpers.py',
-        'ui_components.py',
-        'agent_service.py',
-        'server.py',
-        'Home.py',
-        'pages/1_Basic_Chatbot.py',
-        'pages/2_Chatbot_Agent.py',
-        'pages/3_Chat_with_your_Data.py',
-        'pages/4_MCP_Agent.py'
+        "config.py",
+        "langchain_helpers.py",
+        "ui_components.py",
+        "agent_service.py",
+        "server.py",
+        "Home.py",
+        "pages/1_Basic_Chatbot.py",
+        "pages/2_Chatbot_Agent.py",
+        "pages/3_Chat_with_your_Data.py",
+        "pages/4_MCP_Agent.py",
     ]
 
     all_good = True
@@ -140,7 +147,7 @@ def test_syntax() -> bool:
             continue
 
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 code = f.read()
             ast.parse(code)
             print(f"  ✓ {filepath}: No syntax errors")
@@ -163,35 +170,35 @@ def test_security_config() -> bool:
     print("\n🔍 Testing security configuration...")
     try:
         # Check .gitignore
-        gitignore_path = project_root / '.gitignore'
-        with open(gitignore_path, 'r') as f:
+        gitignore_path = project_root / ".gitignore"
+        with open(gitignore_path, "r") as f:
             gitignore = f.read()
 
-        if '.env' in gitignore:
+        if ".env" in gitignore:
             print("  ✓ .env is in .gitignore")
         else:
             print("  ✗ .env NOT in .gitignore (security risk!)")
             return False
 
-        if 'secrets/' in gitignore:
+        if "secrets/" in gitignore:
             print("  ✓ secrets/ is in .gitignore")
         else:
             print("  ✗ secrets/ NOT in .gitignore (security risk!)")
             return False
 
         # Check .env.example exists
-        env_example = project_root / '.env.example'
+        env_example = project_root / ".env.example"
         if env_example.exists():
             print("  ✓ .env.example template exists")
         else:
             print("  ⚠ .env.example not found")
 
         # Check docker-compose.yml has secrets config
-        compose_path = project_root / 'docker-compose.yml'
+        compose_path = project_root / "docker-compose.yml"
         if compose_path.exists():
-            with open(compose_path, 'r') as f:
+            with open(compose_path, "r") as f:
                 compose = f.read()
-            if 'secrets:' in compose and 'openai_api_key' in compose:
+            if "secrets:" in compose and "openai_api_key" in compose:
                 print("  ✓ docker-compose.yml has secrets configuration")
             else:
                 print("  ⚠ docker-compose.yml may need secrets configuration")
@@ -217,12 +224,12 @@ def test_api_key_priority() -> bool:
         from config import Config
 
         # Test that environment variables take priority
-        test_key = 'TEST_HEALTH_CHECK_KEY'
-        os.environ[test_key] = 'from_environment'
+        test_key = "TEST_HEALTH_CHECK_KEY"
+        os.environ[test_key] = "from_environment"
 
-        result = Config.get_api_key(test_key, user_input='from_user')
+        result = Config.get_api_key(test_key, user_input="from_user")
 
-        if result == 'from_environment':
+        if result == "from_environment":
             print("  ✓ Environment variables have correct priority over user input")
             del os.environ[test_key]
             return True
@@ -243,20 +250,20 @@ def test_docker_config() -> bool:
     """
     print("\n🔍 Testing Docker configuration...")
     try:
-        compose_path = project_root / 'docker-compose.yml'
+        compose_path = project_root / "docker-compose.yml"
 
         if not compose_path.exists():
             print("  ⚠ docker-compose.yml not found")
             return True  # Not critical
 
-        with open(compose_path, 'r') as f:
+        with open(compose_path, "r") as f:
             compose = f.read()
 
         checks = {
-            'OPENAI_API_KEY': 'OpenAI API key environment variable',
-            'TAVILY_API_KEY': 'Tavily API key environment variable',
-            'MCP_SERVER_URL': 'MCP server URL environment variable',
-            'ENVIRONMENT': 'Environment mode variable'
+            "OPENAI_API_KEY": "OpenAI API key environment variable",
+            "TAVILY_API_KEY": "Tavily API key environment variable",
+            "MCP_SERVER_URL": "MCP server URL environment variable",
+            "ENVIRONMENT": "Environment mode variable",
         }
 
         for key, description in checks.items():
@@ -323,7 +330,7 @@ def main() -> int:
         "Syntax Validation": test_syntax(),
         "Security Config": test_security_config(),
         "API Key Priority": test_api_key_priority(),
-        "Docker Config": test_docker_config()
+        "Docker Config": test_docker_config(),
     }
 
     # Generate report

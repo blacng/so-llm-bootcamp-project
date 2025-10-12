@@ -95,7 +95,7 @@ class Config:
         cls,
         key_name: str,
         user_input: Optional[str] = None,
-        allow_user_input: bool = True
+        allow_user_input: bool = True,
     ) -> Optional[str]:
         """Retrieve API key from secure sources with priority order.
 
@@ -202,10 +202,10 @@ class Config:
         cls._ensure_env_loaded()
 
         return {
-            'openai_key_present': bool(cls.get_openai_key()),
-            'tavily_key_present': bool(cls.get_tavily_key()),
-            'mcp_server_url_present': bool(cls.get_mcp_server_url()),
-            'environment': 'production' if cls.is_production() else 'development'
+            "openai_key_present": bool(cls.get_openai_key()),
+            "tavily_key_present": bool(cls.get_tavily_key()),
+            "mcp_server_url_present": bool(cls.get_mcp_server_url()),
+            "environment": "production" if cls.is_production() else "development",
         }
 
 

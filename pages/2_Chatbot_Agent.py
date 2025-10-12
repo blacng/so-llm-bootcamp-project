@@ -52,7 +52,9 @@ def configure_api_keys() -> bool:
             st.markdown("### 🔑 Enter API Keys")
 
             if not env_openai_key and not env_tavily_key:
-                st.warning("⚠️ No API keys found in environment. Please enter manually (not recommended for production).")
+                st.warning(
+                    "⚠️ No API keys found in environment. Please enter manually (not recommended for production)."
+                )
             elif not env_openai_key:
                 st.warning("⚠️ OpenAI API key not found in environment.")
                 tavily_key = env_tavily_key
@@ -68,7 +70,7 @@ def configure_api_keys() -> bool:
                     "OpenAI API Key",
                     type="password",
                     placeholder="sk-proj-...",
-                    key="agent_openai_input"
+                    key="agent_openai_input",
                 )
             else:
                 openai_input = openai_key or env_openai_key
@@ -80,14 +82,16 @@ def configure_api_keys() -> bool:
                     "Tavily API Key",
                     type="password",
                     placeholder="tvly-...",
-                    key="agent_tavily_input"
+                    key="agent_tavily_input",
                 )
             else:
                 tavily_input = tavily_key or env_tavily_key
                 st.success("✅ Tavily API key configured")
 
             # Only show connect button if we need user input
-            if (not openai_key and not env_openai_key) or (not tavily_key and not env_tavily_key):
+            if (not openai_key and not env_openai_key) or (
+                not tavily_key and not env_tavily_key
+            ):
                 if st.button("Connect", type="primary", use_container_width=True):
                     valid_openai = ValidationHelper.validate_openai_key(openai_input)
                     valid_tavily = ValidationHelper.validate_tavily_key(tavily_input)
@@ -106,15 +110,17 @@ def configure_api_keys() -> bool:
 
     return True
 
+
 class ChatbotTools:
     """Core functionality class for the agent chatbot.
-    
+
     Manages agent setup, message display, and response processing
     with web search capabilities through Tavily integration.
     """
+
     def setup_agent(self) -> Any:
         """Setup the web search-enabled agent.
-        
+
         Returns:
             Configured LangGraph agent with Tavily search tools
         """
@@ -124,24 +130,28 @@ class ChatbotTools:
 
     def display_messages(self) -> None:
         """Display chat messages with web search context awareness.
-        
+
         Shows conversation history or informative welcome message
         highlighting the agent's web search capabilities.
         """
         if not st.session_state.agent_messages:
-            st.info("🌐 Ask me anything and I'll search the web for real-time information!")
+            st.info(
+                "🌐 Ask me anything and I'll search the web for real-time information!"
+            )
         else:
             for message in st.session_state.agent_messages:
                 if message["role"] == "user":
                     with st.chat_message("user", avatar=ChatbotUI.get_user_avatar()):
                         st.write(message["content"])
                 else:
-                    with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
+                    with st.chat_message(
+                        "assistant", avatar=ChatbotUI.get_bot_avatar()
+                    ):
                         st.write(message["content"])
 
     def main(self) -> None:
         """Main agent chatbot logic.
-        
+
         Manages the complete agent workflow including message processing,
         web search integration, and streaming response handling.
         """
@@ -164,10 +174,11 @@ class ChatbotTools:
         self.display_messages()
 
         # Process user query through web search agent
-        if (st.session_state.agent_messages and
-            st.session_state.agent_messages[-1]["role"] == "user" and
-            not st.session_state.get("agent_processing", False)):
-
+        if (
+            st.session_state.agent_messages
+            and st.session_state.agent_messages[-1]["role"] == "user"
+            and not st.session_state.get("agent_processing", False)
+        ):
             # Set processing flag and timestamp
             st.session_state.agent_processing = True
             st.session_state.agent_processing_start = time.time()
@@ -184,13 +195,17 @@ class ChatbotTools:
                         asyncio.set_event_loop(loop)
                         try:
                             response = loop.run_until_complete(
-                                AgentChatbotHelper.process_agent_response(agent, user_query)
+                                AgentChatbotHelper.process_agent_response(
+                                    agent, user_query
+                                )
                             )
                         finally:
                             loop.close()
 
                         # Add assistant response
-                        st.session_state.agent_messages.append({"role": "assistant", "content": response})
+                        st.session_state.agent_messages.append(
+                            {"role": "assistant", "content": response}
+                        )
 
                         # Reset processing flag before rerun
                         st.session_state.agent_processing = False
@@ -204,10 +219,12 @@ class ChatbotTools:
                         st.error(f"❌ Error: {str(e)}")
 
                         # Add error message to chat
-                        st.session_state.agent_messages.append({
-                            "role": "assistant",
-                            "content": f"I encountered an error: {str(e)}. Please try again."
-                        })
+                        st.session_state.agent_messages.append(
+                            {
+                                "role": "assistant",
+                                "content": f"I encountered an error: {str(e)}. Please try again.",
+                            }
+                        )
                         st.rerun()
 
         # Chat input for web search queries
@@ -219,16 +236,14 @@ class ChatbotTools:
 
 def main() -> None:
     """Main application function for the agent chatbot page.
-    
+
     Orchestrates the complete agent workflow including UI setup,
     API key validation, and agent-based conversation processing.
     """
     # Configure page with centralized UI components
     ChatbotUI.setup_page("Agent Chatbot", "🌐")
     ChatbotUI.render_page_header(
-        "🌐",
-        "Chatbot Agent",
-        "AI agent with real-time web search capabilities"
+        "🌐", "Chatbot Agent", "AI agent with real-time web search capabilities"
     )
 
     # Validate required API keys before proceeding
@@ -238,6 +253,7 @@ def main() -> None:
     # Initialize and run the agent chatbot interface
     obj = ChatbotTools()
     obj.main()
+
 
 if __name__ == "__main__":
     main()
