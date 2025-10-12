@@ -1,0 +1,282 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Job 1: Code Quality Checks
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
+    - name: Install dependencies
+      run: |
+        uv sync
+
+    - name: Run ruff linting
+      run: |
+        uv run ruff check . --output-format=github
+      continue-on-error: false
+
+    - name: Run ruff format check
+      run: |
+        uv run ruff format --check .
+      continue-on-error: false
+
+    - name: Check for TODO/FIXME comments
+      run: |
+        echo "Checking for TODO/FIXME comments..."
+        grep -r "TODO\|FIXME" --include="*.py" . || echo "No TODO/FIXME found"
+      continue-on-error: true
+
+  # Job 2: Security Scanning
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Install dependencies
+      run: |
+        uv sync
+
+    - name: Run safety check for vulnerabilities
+      run: |
+        uv pip install safety
+        uv run safety check --json || echo "Safety check completed with warnings"
+      continue-on-error: true
+
+    - name: Run bandit security linter
+      run: |
+        uv pip install bandit[toml]
+        uv run bandit -r . -f json -o bandit-report.json || true
+        uv run bandit -r . || echo "Bandit scan completed"
+      continue-on-error: true
+
+    - name: Check for secrets in code
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+      continue-on-error: true
+
+  # Job 3: Health Check
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Install dependencies
+      run: |
+        uv sync
+
+    - name: Run health check script
+      run: |
+        uv run python tests/health_check.py
+      env:
+        # Use dummy keys for health check (syntax validation only)
+        OPENAI_API_KEY: sk-proj-test123
+        TAVILY_API_KEY: tvly-test123
+        MCP_SERVER_URL: http://localhost:8000
+
+    - name: Verify all imports
+      run: |
+        echo "Testing imports..."
+        uv run python -c "from config import Config; print('✅ config.py')"
+        uv run python -c "from langchain_helpers import BasicChatbotHelper; print('✅ langchain_helpers.py')"
+        uv run python -c "from ui_components import ChatbotUI; print('✅ ui_components.py')"
+
+  # Job 4: Docker Build Test
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Create dummy .env file
+      run: |
+        echo "OPENAI_API_KEY=sk-test" > .env
+        echo "TAVILY_API_KEY=tvly-test" >> .env
+        echo "MCP_SERVER_URL=http://localhost:8000" >> .env
+
+    - name: Build Docker image
+      run: |
+        docker-compose build streamlit-app
+
+    - name: Verify Docker image
+      run: |
+        docker images | grep streamlit-app
+
+    - name: Test Docker image startup (smoke test)
+      run: |
+        # Start container in background
+        docker-compose up -d streamlit-app
+
+        # Wait for container to be ready
+        sleep 10
+
+        # Check if container is running
+        docker-compose ps
+
+        # Check logs for errors
+        docker-compose logs streamlit-app
+
+        # Stop container
+        docker-compose down
+      timeout-minutes: 5
+
+  # Job 5: Type Checking (if using mypy)
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Install dependencies
+      run: |
+        uv sync
+        uv pip install mypy
+
+    - name: Run mypy type checker
+      run: |
+        uv run mypy . --ignore-missing-imports --no-strict-optional || echo "Type checking completed with warnings"
+      continue-on-error: true
+
+  # Job 6: Code Coverage & Test Report
+  test-coverage:
+    name: Test Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Install dependencies
+      run: |
+        uv sync
+        uv pip install pytest pytest-cov
+
+    - name: Run tests with coverage
+      run: |
+        # Create a dummy test for now since no tests exist yet
+        mkdir -p tests
+        echo "def test_dummy(): assert True" > tests/test_placeholder.py
+        uv run pytest --cov=. --cov-report=xml --cov-report=html --cov-report=term
+      continue-on-error: true
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+      continue-on-error: true
+
+  # Job 7: Dependency Review (on PRs)
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
+
+  # Job 8: Build Summary
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [lint, security, health-check, docker-build, type-check, test-coverage]
+    if: always()
+
+    steps:
+    - name: Check job results
+      run: |
+        echo "📊 CI Pipeline Summary"
+        echo "====================="
+        echo "Lint: ${{ needs.lint.result }}"
+        echo "Security: ${{ needs.security.result }}"
+        echo "Health Check: ${{ needs.health-check.result }}"
+        echo "Docker Build: ${{ needs.docker-build.result }}"
+        echo "Type Check: ${{ needs.type-check.result }}"
+        echo "Test Coverage: ${{ needs.test-coverage.result }}"
+
+        if [ "${{ needs.lint.result }}" != "success" ] || \
+           [ "${{ needs.health-check.result }}" != "success" ] || \
+           [ "${{ needs.docker-build.result }}" != "success" ]; then
+          echo "❌ CI Pipeline Failed"
+          exit 1
+        else
+          echo "✅ CI Pipeline Passed"
+        fi

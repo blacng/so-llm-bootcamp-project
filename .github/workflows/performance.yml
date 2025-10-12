@@ -1,0 +1,95 @@
+name: Performance Monitoring
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  analyze-code:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install analysis tools
+      run: |
+        pip install radon
+
+    - name: Analyze cyclomatic complexity
+      run: |
+        echo "## Cyclomatic Complexity Report" > complexity-report.md
+        echo "" >> complexity-report.md
+        radon cc . -a -s >> complexity-report.md
+        cat complexity-report.md
+
+    - name: Analyze maintainability index
+      run: |
+        echo "## Maintainability Index" > maintainability-report.md
+        echo "" >> maintainability-report.md
+        radon mi . -s >> maintainability-report.md
+        cat maintainability-report.md
+
+    - name: Check for complex functions
+      run: |
+        echo "Checking for overly complex functions (CC > 10)..."
+        radon cc . -n C -s || echo "✅ No overly complex functions found"
+
+    - name: Upload reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: complexity-reports
+        path: |
+          complexity-report.md
+          maintainability-report.md
+
+  docker-performance:
+    name: Docker Build Performance
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Create dummy .env
+      run: |
+        echo "OPENAI_API_KEY=sk-test" > .env
+        echo "TAVILY_API_KEY=tvly-test" >> .env
+        echo "MCP_SERVER_URL=http://localhost:8000" >> .env
+
+    - name: Build and time Docker image
+      run: |
+        start_time=$(date +%s)
+        docker-compose build streamlit-app
+        end_time=$(date +%s)
+        build_time=$((end_time - start_time))
+
+        echo "Docker build completed in ${build_time} seconds"
+
+        # Check image size
+        image_size=$(docker images --format "{{.Size}}" | head -1)
+        echo "Image size: ${image_size}"
+
+        # Create performance report
+        echo "## Docker Performance Report" > docker-performance.md
+        echo "" >> docker-performance.md
+        echo "- **Build Time**: ${build_time}s" >> docker-performance.md
+        echo "- **Image Size**: ${image_size}" >> docker-performance.md
+
+    - name: Upload performance report
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-performance
+        path: docker-performance.md

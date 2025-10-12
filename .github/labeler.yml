@@ -1,0 +1,41 @@
+# Auto-labeling configuration for PRs based on changed files
+
+# Documentation changes
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: ['**/*.md', 'docs/**/*']
+
+# Frontend/UI changes
+ui:
+  - changed-files:
+    - any-glob-to-any-file: ['pages/**/*', 'ui_components.py']
+
+# Backend/Logic changes
+backend:
+  - changed-files:
+    - any-glob-to-any-file: ['langchain_helpers.py', 'agent_service.py', 'server.py']
+
+# Configuration changes
+config:
+  - changed-files:
+    - any-glob-to-any-file: ['config.py', '.env*', 'docker-compose.yml', 'Dockerfile']
+
+# Infrastructure/DevOps changes
+devops:
+  - changed-files:
+    - any-glob-to-any-file: ['Dockerfile', 'docker-compose.yml', 'Makefile', '.github/**/*']
+
+# Testing changes
+testing:
+  - changed-files:
+    - any-glob-to-any-file: ['tests/**/*', '**/test_*.py']
+
+# Security changes
+security:
+  - changed-files:
+    - any-glob-to-any-file: ['config.py', 'secrets/**/*']
+
+# Dependencies
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file: ['pyproject.toml', 'uv.lock', 'requirements.txt']
