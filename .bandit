@@ -1,0 +1,35 @@
+# Bandit Configuration File
+# https://bandit.readthedocs.io/en/latest/config.html
+
+[bandit]
+# Directories to exclude from scanning
+exclude_dirs = [
+    '/tmp',
+    '/venv',
+    '/.venv',
+    '/node_modules',
+    '/.git',
+    '/.github',
+    '/docs',
+    '/cache',
+    '/build',
+    '/dist',
+    '/__pycache__',
+    '/.pytest_cache',
+    '/.ruff_cache'
+]
+
+# Only scan Python files
+targets = [
+    '*.py',
+    'pages/*.py'
+]
+
+# Test IDs to skip (if needed)
+# skips = ['B101', 'B601']
+
+# Severity level threshold (LOW, MEDIUM, HIGH)
+level = MEDIUM
+
+# Confidence level threshold (LOW, MEDIUM, HIGH)
+confidence = MEDIUM

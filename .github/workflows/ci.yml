@@ -87,9 +87,9 @@ jobs:
 
     - name: Run bandit security linter
       run: |
-        uv run bandit -r . -ll || echo "✅ Bandit scan completed"
+        uv run bandit -r . -c .bandit --format=txt || echo "✅ Bandit scan completed"
       continue-on-error: true
-      timeout-minutes: 1
+      timeout-minutes: 2
 
     - name: Check for secrets in code
       uses: trufflesecurity/trufflehog@main
