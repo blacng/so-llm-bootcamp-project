@@ -1,6 +1,6 @@
-# GitHub Configuration
+# GitHub Workflows Directory
 
-This directory contains GitHub-specific configuration files for automated workflows, PR management, and CI/CD pipelines.
+This directory contains GitHub Actions workflows and related configuration files for automated CI/CD pipelines, PR management, and security scanning.
 
 ## 📁 Directory Structure
 

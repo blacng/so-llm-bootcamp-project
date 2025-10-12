@@ -328,7 +328,7 @@ With this setup, you now have:
 
 | Document | Purpose |
 |----------|---------|
-| `.github/README.md` | GitHub folder overview |
+| `.github/WORKFLOWS_README.md` | GitHub workflows overview |
 | `.github/GITHUB_ACTIONS_SETUP.md` | Comprehensive setup guide (20+ pages) |
 | `.github/WORKFLOWS_DIAGRAM.md` | Visual workflow diagrams |
 | This document | Quick summary and getting started |
