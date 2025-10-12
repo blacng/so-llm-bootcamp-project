@@ -7,6 +7,7 @@ for current information and real-time data queries.
 
 import streamlit as st
 import asyncio
+import time
 from typing import Any
 
 from ui_components import ChatbotUI
@@ -148,6 +149,14 @@ class ChatbotTools:
         if "agent_messages" not in st.session_state:
             st.session_state.agent_messages = []
 
+        # Safety: Reset stuck processing flag (timeout after 120 seconds for web search)
+        if st.session_state.get("agent_processing", False):
+            processing_start = st.session_state.get("agent_processing_start", 0)
+            if time.time() - processing_start > 120:
+                st.warning("⚠️ Processing timeout detected. Resetting...")
+                st.session_state.agent_processing = False
+                st.session_state.agent_processing_start = 0
+
         # Configure agent with web search capabilities
         agent = self.setup_agent()
 
@@ -159,11 +168,14 @@ class ChatbotTools:
             st.session_state.agent_messages[-1]["role"] == "user" and
             not st.session_state.get("agent_processing", False)):
 
+            # Set processing flag and timestamp
             st.session_state.agent_processing = True
-            try:
-                # Show processing indicator
-                with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
-                    with st.spinner("Searching the web..."):
+            st.session_state.agent_processing_start = time.time()
+
+            # Show processing indicator
+            with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
+                with st.spinner("Searching the web..."):
+                    try:
                         # Extract user query for web search processing
                         user_query = st.session_state.agent_messages[-1]["content"]
 
@@ -180,13 +192,23 @@ class ChatbotTools:
                         # Add assistant response
                         st.session_state.agent_messages.append({"role": "assistant", "content": response})
 
-                st.session_state.agent_processing = False
-                st.rerun()
+                        # Reset processing flag before rerun
+                        st.session_state.agent_processing = False
+                        st.session_state.agent_processing_start = 0
+                        st.rerun()
 
-            except Exception as e:
-                st.session_state.agent_processing = False
-                st.error(f"Error: {str(e)}")
-                st.rerun()
+                    except Exception as e:
+                        # Always reset processing flag on error
+                        st.session_state.agent_processing = False
+                        st.session_state.agent_processing_start = 0
+                        st.error(f"❌ Error: {str(e)}")
+
+                        # Add error message to chat
+                        st.session_state.agent_messages.append({
+                            "role": "assistant",
+                            "content": f"I encountered an error: {str(e)}. Please try again."
+                        })
+                        st.rerun()
 
         # Chat input for web search queries
         if prompt := st.chat_input("Ask me anything about current events..."):

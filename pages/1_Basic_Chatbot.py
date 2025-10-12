@@ -6,6 +6,7 @@ and reliable message processing.
 """
 
 import streamlit as st
+import time
 
 from ui_components import ChatbotUI, APIKeyUI
 from langchain_helpers import BasicChatbotHelper, ValidationHelper
@@ -117,6 +118,14 @@ def main() -> None:
         if "basic_messages" not in st.session_state:
             st.session_state.basic_messages = []
 
+        # Safety: Reset stuck processing flag (timeout after 60 seconds)
+        if st.session_state.get("basic_processing", False):
+            processing_start = st.session_state.get("basic_processing_start", 0)
+            if time.time() - processing_start > 60:
+                st.warning("⚠️ Processing timeout detected. Resetting...")
+                st.session_state.basic_processing = False
+                st.session_state.basic_processing_start = 0
+
         # Render current conversation history
         display_messages()
 
@@ -125,11 +134,14 @@ def main() -> None:
             st.session_state.basic_messages[-1]["role"] == "user" and
             not st.session_state.get("basic_processing", False)):
 
+            # Set processing flag and timestamp
             st.session_state.basic_processing = True
-            try:
-                # Show processing indicator
-                with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
-                    with st.spinner("Thinking..."):
+            st.session_state.basic_processing_start = time.time()
+
+            # Show processing indicator
+            with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
+                with st.spinner("Thinking..."):
+                    try:
                         # Get the last user message
                         user_input = st.session_state.basic_messages[-1]["content"]
                         response = BasicChatbotHelper.invoke_with_memory(
@@ -144,13 +156,23 @@ def main() -> None:
                             "content": response.content
                         })
 
-                st.session_state.basic_processing = False
-                st.rerun()
+                        # Reset processing flag before rerun
+                        st.session_state.basic_processing = False
+                        st.session_state.basic_processing_start = 0
+                        st.rerun()
 
-            except Exception as e:
-                st.session_state.basic_processing = False
-                st.error(f"Error: {str(e)}")
-                st.rerun()
+                    except Exception as e:
+                        # Always reset processing flag on error
+                        st.session_state.basic_processing = False
+                        st.session_state.basic_processing_start = 0
+                        st.error(f"❌ Error: {str(e)}")
+
+                        # Add error message to chat
+                        st.session_state.basic_messages.append({
+                            "role": "assistant",
+                            "content": f"I encountered an error: {str(e)}. Please try again."
+                        })
+                        st.rerun()
 
     # Chat input - outside container to prevent shifting
     if prompt := st.chat_input("Type your message here..."):

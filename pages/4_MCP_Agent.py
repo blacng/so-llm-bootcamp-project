@@ -7,6 +7,7 @@ LLM functionality, enabling extensible and context-aware AI interactions.
 
 import streamlit as st
 import asyncio
+import time
 
 from ui_components import ChatbotUI
 from langchain_helpers import MCPHelper, ValidationHelper
@@ -250,6 +251,14 @@ def main() -> None:
     if "mcp_messages" not in st.session_state:
         st.session_state.mcp_messages = []
 
+    # Safety: Reset stuck processing flag (timeout after 120 seconds for MCP)
+    if st.session_state.get("mcp_processing", False):
+        processing_start = st.session_state.get("mcp_processing_start", 0)
+        if time.time() - processing_start > 120:
+            st.warning("⚠️ Processing timeout detected. Resetting...")
+            st.session_state.mcp_processing = False
+            st.session_state.mcp_processing_start = 0
+
     # Render conversation with MCP context awareness
     display_messages()
 
@@ -258,11 +267,14 @@ def main() -> None:
         st.session_state.mcp_messages[-1]["role"] == "user" and
         not st.session_state.get("mcp_processing", False)):
 
+        # Set processing flag and timestamp
         st.session_state.mcp_processing = True
-        try:
-            # Show processing indicator
-            with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
-                with st.spinner("Processing with MCP agent..."):
+        st.session_state.mcp_processing_start = time.time()
+
+        # Show processing indicator
+        with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
+            with st.spinner("Processing with MCP agent..."):
+                try:
                     # Extract user query for MCP processing
                     user_query = st.session_state.mcp_messages[-1]["content"]
 
@@ -304,13 +316,23 @@ def main() -> None:
                     # Add assistant response
                     st.session_state.mcp_messages.append({"role": "assistant", "content": response_text})
 
-            st.session_state.mcp_processing = False
-            st.rerun()
+                    # Reset processing flag before rerun
+                    st.session_state.mcp_processing = False
+                    st.session_state.mcp_processing_start = 0
+                    st.rerun()
 
-        except Exception as e:
-            st.session_state.mcp_processing = False
-            st.error(f"Error: {str(e)}")
-            st.rerun()
+                except Exception as e:
+                    # Always reset processing flag on error
+                    st.session_state.mcp_processing = False
+                    st.session_state.mcp_processing_start = 0
+                    st.error(f"❌ Error: {str(e)}")
+
+                    # Add error message to chat
+                    st.session_state.mcp_messages.append({
+                        "role": "assistant",
+                        "content": f"I encountered an error: {str(e)}. Please try again."
+                    })
+                    st.rerun()
 
     # MCP agent query input interface
     if prompt := st.chat_input("Ask me anything..."):

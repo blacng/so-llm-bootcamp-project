@@ -162,48 +162,61 @@ class AgentChatbotHelper:
         return agent
     
     @staticmethod
-    async def process_agent_response(agent: Any, user_query: str) -> str:
-        """Process agent response with streaming support.
-        
+    async def process_agent_response(agent: Any, user_query: str, timeout: int = 90) -> str:
+        """Process agent response with streaming support and timeout.
+
         Handles the agent's reasoning and tool usage steps, collecting
         all output into a cohesive response.
-        
+
         Args:
             agent: The configured LangGraph agent
             user_query: User's question or request
-            
+            timeout: Maximum time in seconds to wait for response (default: 90)
+
         Returns:
             Complete agent response as a string
-        """
-        accumulated_response = ""
-        
-        # Stream state updates (includes reasoning and tool execution steps)
-        for update in agent.stream({"messages": user_query}):
-            messages = update.get("messages", [])
-            for message in messages:
-                content = getattr(message, "content", "")
-                
-                # Handle structured content (list of content blocks)
-                if not content and isinstance(getattr(message, "content", None), list):
-                    content = "".join(
-                        block.get("text", "")
-                        for block in message.content
-                        if isinstance(block, dict) and block.get("type") == "text"
-                    )
-                    
-                if content:
-                    accumulated_response += content
 
-        # Fallback to direct invocation if streaming failed
-        if not accumulated_response:
-            response = agent.invoke({"messages": user_query})
-            accumulated_response = (
-                response["messages"][-1].content
-                if isinstance(response, dict) and response.get("messages")
-                else str(response)
-            )
-        
-        return accumulated_response
+        Raises:
+            asyncio.TimeoutError: If the response takes longer than timeout seconds
+        """
+        import asyncio
+
+        async def _process():
+            accumulated_response = ""
+
+            # Stream state updates (includes reasoning and tool execution steps)
+            for update in agent.stream({"messages": user_query}):
+                messages = update.get("messages", [])
+                for message in messages:
+                    content = getattr(message, "content", "")
+
+                    # Handle structured content (list of content blocks)
+                    if not content and isinstance(getattr(message, "content", None), list):
+                        content = "".join(
+                            block.get("text", "")
+                            for block in message.content
+                            if isinstance(block, dict) and block.get("type") == "text"
+                        )
+
+                    if content:
+                        accumulated_response += content
+
+            # Fallback to direct invocation if streaming failed
+            if not accumulated_response:
+                response = agent.invoke({"messages": user_query})
+                accumulated_response = (
+                    response["messages"][-1].content
+                    if isinstance(response, dict) and response.get("messages")
+                    else str(response)
+                )
+
+            return accumulated_response
+
+        # Apply timeout to the entire process
+        try:
+            return await asyncio.wait_for(_process(), timeout=timeout)
+        except asyncio.TimeoutError:
+            raise asyncio.TimeoutError(f"Agent response timed out after {timeout} seconds. The web search may be taking too long or the API may be unavailable.")
 
 
 class RAGHelper:

@@ -6,6 +6,7 @@ Features automatic document processing, vector search, and contextual responses.
 """
 
 import streamlit as st
+import time
 from typing import List, Any
 
 from ui_components import ChatbotUI
@@ -384,6 +385,14 @@ class CustomDataChatbot:
                 elif st.session_state.rag_anonymize_pii and not st.session_state.rag_pii_entities:
                     st.info("ℹ️ No PII detected in uploaded documents.")
 
+        # Safety: Reset stuck processing flag (timeout after 90 seconds for RAG)
+        if st.session_state.get("rag_processing", False):
+            processing_start = st.session_state.get("rag_processing_start", 0)
+            if time.time() - processing_start > 90:
+                st.warning("⚠️ Processing timeout detected. Resetting...")
+                st.session_state.rag_processing = False
+                st.session_state.rag_processing_start = 0
+
         # Render conversation history with document context
         self.display_messages()
 
@@ -394,11 +403,14 @@ class CustomDataChatbot:
             st.session_state.rag_messages[-1]["role"] == "user" and
             not st.session_state.get("rag_processing", False)):
 
+            # Set processing flag and timestamp
             st.session_state.rag_processing = True
-            try:
-                # Show processing indicator
-                with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
-                    with st.spinner("Analyzing documents..."):
+            st.session_state.rag_processing_start = time.time()
+
+            # Show processing indicator
+            with st.chat_message("assistant", avatar=ChatbotUI.get_bot_avatar()):
+                with st.spinner("Analyzing documents..."):
+                    try:
                         # Extract user query for document analysis
                         user_query = st.session_state.rag_messages[-1]["content"]
 
@@ -446,13 +458,23 @@ class CustomDataChatbot:
                         # Add assistant response
                         st.session_state.rag_messages.append({"role": "assistant", "content": answer})
 
-                st.session_state.rag_processing = False
-                st.rerun()
+                        # Reset processing flag before rerun
+                        st.session_state.rag_processing = False
+                        st.session_state.rag_processing_start = 0
+                        st.rerun()
 
-            except Exception as e:
-                st.session_state.rag_processing = False
-                st.error(f"Error: {str(e)}")
-                st.rerun()
+                    except Exception as e:
+                        # Always reset processing flag on error
+                        st.session_state.rag_processing = False
+                        st.session_state.rag_processing_start = 0
+                        st.error(f"❌ Error: {str(e)}")
+
+                        # Add error message to chat
+                        st.session_state.rag_messages.append({
+                            "role": "assistant",
+                            "content": f"I encountered an error: {str(e)}. Please try again."
+                        })
+                        st.rerun()
 
         # Show query PII warning if it was detected in last query
         if st.session_state.get("rag_last_query_pii"):
