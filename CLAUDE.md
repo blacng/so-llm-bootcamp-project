@@ -217,3 +217,4 @@ The RAG system intelligently determines response strategy:
 - Use docker and docker-compose to containerize this application
 - Use make for infrastructure management
 - Use ruff for linting and code formatting
+- Use Context7 MCP to pull up-to-date, version-specific documentation and code examples straight from the source.
