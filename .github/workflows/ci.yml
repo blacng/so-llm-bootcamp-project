@@ -139,7 +139,7 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker-compose build streamlit-app
+        docker compose build streamlit-app
 
     - name: Verify Docker image
       run: |
@@ -148,19 +148,19 @@ jobs:
     - name: Test Docker image startup (smoke test)
       run: |
         # Start container in background
-        docker-compose up -d streamlit-app
+        docker compose up -d streamlit-app
 
         # Wait for container to be ready
         sleep 10
 
         # Check if container is running
-        docker-compose ps
+        docker compose ps
 
         # Check logs for errors
-        docker-compose logs streamlit-app
+        docker compose logs streamlit-app
 
         # Stop container
-        docker-compose down
+        docker compose down
       timeout-minutes: 5
 
   # Job 5: Type Checking (if using mypy)
