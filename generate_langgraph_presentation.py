@@ -54,8 +54,14 @@ def create_overview_slide(prs):
     p.space_after = Pt(20)
 
     items = [
-        ("Agentic RAG Workflow", "Intelligent document question-answering with adaptive retrieval"),
-        ("ReAct Agent", "Web search-enabled conversational AI with tool-calling capability")
+        (
+            "Agentic RAG Workflow",
+            "Intelligent document question-answering with adaptive retrieval",
+        ),
+        (
+            "ReAct Agent",
+            "Web search-enabled conversational AI with tool-calling capability",
+        ),
     ]
 
     for item_title, item_desc in items:
@@ -78,7 +84,9 @@ def create_rag_architecture_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
 
     # Title
-    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(0.6))
+    title_box = slide.shapes.add_textbox(
+        Inches(0.5), Inches(0.3), Inches(9), Inches(0.6)
+    )
     title_frame = title_box.text_frame
     title_frame.text = "Agentic RAG Workflow Architecture"
     title_frame.paragraphs[0].font.size = Pt(32)
@@ -96,7 +104,7 @@ def create_rag_architecture_slide(prs):
         ("classify_mode", Inches(0.8) + spacing * 1, RGBColor(100, 150, 255)),
         ("retrieve", Inches(0.8) + spacing * 2, RGBColor(100, 150, 255)),
         ("generate", Inches(0.8) + spacing * 3, RGBColor(100, 150, 255)),
-        ("END", Inches(0.8) + spacing * 4, RGBColor(255, 100, 100))
+        ("END", Inches(0.8) + spacing * 4, RGBColor(255, 100, 100)),
     ]
 
     # Draw nodes
@@ -104,8 +112,7 @@ def create_rag_architecture_slide(prs):
     for node_name, x_pos, color in nodes:
         # Create rounded rectangle
         shape = slide.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE,
-            x_pos, node_y, node_width, node_height
+            MSO_SHAPE.ROUNDED_RECTANGLE, x_pos, node_y, node_width, node_height
         )
         shape.fill.solid()
         shape.fill.fore_color.rgb = color
@@ -128,8 +135,10 @@ def create_rag_architecture_slide(prs):
 
             connector = slide.shapes.add_connector(
                 1,  # Straight connector
-                arrow_start_x, arrow_y,
-                arrow_end_x, arrow_y
+                arrow_start_x,
+                arrow_y,
+                arrow_end_x,
+                arrow_y,
             )
             connector.line.color.rgb = RGBColor(50, 50, 50)
             connector.line.width = Pt(2)
@@ -142,7 +151,7 @@ def create_rag_architecture_slide(prs):
         ("Classify query\ntype", Inches(0.8) + spacing * 1),
         ("Fetch docs\n(3 or 8)", Inches(0.8) + spacing * 2),
         ("Create\nresponse", Inches(0.8) + spacing * 3),
-        ("Exit", Inches(0.8) + spacing * 4)
+        ("Exit", Inches(0.8) + spacing * 4),
     ]
 
     desc_y = node_y + node_height + Inches(0.3)
@@ -167,7 +176,7 @@ def create_rag_nodes_slide(prs):
     nodes_info = [
         ("classify_mode", "Analyzes query to determine 'summary' or 'fact' mode"),
         ("retrieve", "Fetches 8 docs (summary) or 3 docs (fact) from vector store"),
-        ("generate", "Creates grounded response using only retrieved context")
+        ("generate", "Creates grounded response using only retrieved context"),
     ]
 
     for node_name, description in nodes_info:
@@ -209,7 +218,7 @@ def create_rag_state_slide(prs):
         ("question: str", "User's query (input)"),
         ("mode: Literal['summary', 'fact']", "Response strategy"),
         ("documents: List[Document]", "Retrieved context"),
-        ("generation: str", "Final response (output)")
+        ("generation: str", "Final response (output)"),
     ]
 
     for field, description in state_fields:
@@ -245,7 +254,7 @@ def create_rag_features_slide(prs):
         ("Grounded Generation", "Responses strictly based on retrieved documents"),
         ("Type-Safe State", "TypedDict ensures proper data flow between nodes"),
         ("PII Anonymization", "Optional privacy protection using Presidio"),
-        ("Vector Store Caching", "Faster reloads with FAISS cache (7-day TTL)")
+        ("Vector Store Caching", "Faster reloads with FAISS cache (7-day TTL)"),
     ]
 
     p = tf.paragraphs[0]
@@ -269,7 +278,9 @@ def create_react_architecture_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
 
     # Title
-    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(0.6))
+    title_box = slide.shapes.add_textbox(
+        Inches(0.5), Inches(0.3), Inches(9), Inches(0.6)
+    )
     title_frame = title_box.text_frame
     title_frame.text = "ReAct Agent Architecture (Cyclic)"
     title_frame.paragraphs[0].font.size = Pt(32)
@@ -283,7 +294,10 @@ def create_react_architecture_slide(prs):
     # START node
     start_shape = slide.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE,
-        center_x - Inches(1), Inches(1.5), Inches(2), Inches(0.7)
+        center_x - Inches(1),
+        Inches(1.5),
+        Inches(2),
+        Inches(0.7),
     )
     start_shape.fill.solid()
     start_shape.fill.fore_color.rgb = RGBColor(100, 200, 100)
@@ -297,7 +311,10 @@ def create_react_architecture_slide(prs):
     # Agent Node
     agent_shape = slide.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE,
-        center_x - Inches(1), center_y - Inches(0.5), Inches(2), Inches(1)
+        center_x - Inches(1),
+        center_y - Inches(0.5),
+        Inches(2),
+        Inches(1),
     )
     agent_shape.fill.solid()
     agent_shape.fill.fore_color.rgb = RGBColor(100, 150, 255)
@@ -312,7 +329,10 @@ def create_react_architecture_slide(prs):
     # Tools Node
     tools_shape = slide.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE,
-        center_x - Inches(1), center_y + Inches(1.5), Inches(2), Inches(1)
+        center_x - Inches(1),
+        center_y + Inches(1.5),
+        Inches(2),
+        Inches(1),
     )
     tools_shape.fill.solid()
     tools_shape.fill.fore_color.rgb = RGBColor(255, 180, 100)
@@ -327,7 +347,10 @@ def create_react_architecture_slide(prs):
     # END node
     end_shape = slide.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE,
-        center_x + Inches(2.5), center_y - Inches(0.35), Inches(1.5), Inches(0.7)
+        center_x + Inches(2.5),
+        center_y - Inches(0.35),
+        Inches(1.5),
+        Inches(0.7),
     )
     end_shape.fill.solid()
     end_shape.fill.fore_color.rgb = RGBColor(255, 100, 100)
@@ -343,7 +366,7 @@ def create_react_architecture_slide(prs):
         ("Tool call?", center_x + Inches(1.2), center_y + Inches(0.5), 12),
         ("Yes →", center_x - Inches(0.3), center_y + Inches(1.0), 12),
         ("← Results", center_x - Inches(1.5), center_y + Inches(1.0), 12),
-        ("No →", center_x + Inches(1.2), center_y - Inches(0.1), 12)
+        ("No →", center_x + Inches(1.2), center_y - Inches(0.1), 12),
     ]
 
     for text, x, y, size in annotations:
@@ -371,7 +394,7 @@ def create_react_features_slide(prs):
         ("Conditional Edges", "LLM decides when to use tools vs. respond"),
         ("Streaming Support", "Real-time response updates"),
         ("Timeout Protection", "90-second default timeout"),
-        ("Multi-Step Reasoning", "Can chain multiple searches together")
+        ("Multi-Step Reasoning", "Can chain multiple searches together"),
     ]
 
     p = tf.paragraphs[0]
@@ -395,7 +418,9 @@ def create_comparison_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
 
     # Title
-    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(0.6))
+    title_box = slide.shapes.add_textbox(
+        Inches(0.5), Inches(0.3), Inches(9), Inches(0.6)
+    )
     title_frame = title_box.text_frame
     title_frame.text = "RAG vs. ReAct Agent Comparison"
     title_frame.paragraphs[0].font.size = Pt(32)
@@ -436,7 +461,7 @@ def create_comparison_slide(prs):
         ["Nodes", "3 agent nodes", "2 nodes (agent + tools)"],
         ["Conditional Logic", "None", "Yes (tool decisions)"],
         ["Response Mode", "Adaptive (2 modes)", "Single strategy"],
-        ["Streaming", "Not implemented", "Supported"]
+        ["Streaming", "Not implemented", "Supported"],
     ]
 
     for row_idx, row_data in enumerate(data, start=1):
@@ -473,7 +498,7 @@ def create_use_cases_slide(prs):
         "You have proprietary documents (PDFs, reports)",
         "Need factually grounded responses",
         "Require citation to source material",
-        "Want consistent, reproducible answers"
+        "Want consistent, reproducible answers",
     ]
 
     for case in rag_cases:
@@ -496,7 +521,7 @@ def create_use_cases_slide(prs):
         "Need current information (news, prices, events)",
         "Want broad web knowledge",
         "Require multi-step reasoning",
-        "Need to combine multiple sources"
+        "Need to combine multiple sources",
     ]
 
     for case in react_cases:
@@ -560,19 +585,25 @@ def create_file_references_slide(prs):
     tf.clear()
 
     references = [
-        ("langchain_helpers.py", [
-            "Lines 591-728: RAGHelper.build_simple_agentic_rag()",
-            "Lines 730-781: RAGHelper.setup_rag_system()",
-            "Lines 129-228: AgentChatbotHelper (ReAct)"
-        ]),
-        ("Streamlit Pages", [
-            "pages/3_📄_RAG_Document_Chat.py",
-            "pages/2_🔎_Search-Enabled_Chat.py"
-        ]),
-        ("Configuration", [
-            "config.py: Secure API key management",
-            "ui_components.py: Reusable UI components"
-        ])
+        (
+            "langchain_helpers.py",
+            [
+                "Lines 591-728: RAGHelper.build_simple_agentic_rag()",
+                "Lines 730-781: RAGHelper.setup_rag_system()",
+                "Lines 129-228: AgentChatbotHelper (ReAct)",
+            ],
+        ),
+        (
+            "Streamlit Pages",
+            ["pages/3_📄_RAG_Document_Chat.py", "pages/2_🔎_Search-Enabled_Chat.py"],
+        ),
+        (
+            "Configuration",
+            [
+                "config.py: Secure API key management",
+                "ui_components.py: Reusable UI components",
+            ],
+        ),
     ]
 
     p = tf.paragraphs[0]
@@ -611,7 +642,7 @@ def create_summary_slide(prs):
         "ReAct enables real-time web search and multi-step reasoning",
         "Graphs are compiled and optimized by LangGraph",
         "Production-ready with caching, PII protection, and error handling",
-        "Easily extensible with custom nodes and tools"
+        "Easily extensible with custom nodes and tools",
     ]
 
     p = tf.paragraphs[0]
@@ -639,14 +670,14 @@ def create_next_steps_slide(prs):
         ("Web Search", "Try ReAct agent for current events"),
         ("Customize", "Modify node logic in langchain_helpers.py"),
         ("Explore Notebook", "See langgraph_visualization.ipynb"),
-        ("Read Docs", "Check CLAUDE.md for full architecture")
+        ("Read Docs", "Check CLAUDE.md for full architecture"),
     ]
 
     p = tf.paragraphs[0]
     for i, (step, description) in enumerate(steps):
         if i > 0:
             p = tf.add_paragraph()
-        p.text = f"{i+1}. {step}"
+        p.text = f"{i + 1}. {step}"
         p.font.size = Pt(18)
         p.font.bold = True
         p.space_after = Pt(6)
@@ -714,10 +745,12 @@ def main():
     output_file = "langgraph_agents_presentation.pptx"
     prs.save(output_file)
 
-    print(f"\n✅ Presentation created successfully!")
+    print("\n✅ Presentation created successfully!")
     print(f"📁 Output file: {output_file}")
     print(f"📊 Total slides: {len(prs.slides)}")
-    print("\nTo view the presentation, open it in Microsoft PowerPoint or compatible software.")
+    print(
+        "\nTo view the presentation, open it in Microsoft PowerPoint or compatible software."
+    )
 
 
 if __name__ == "__main__":
